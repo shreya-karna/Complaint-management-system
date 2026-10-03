@@ -6,6 +6,7 @@ import {
   createComplaint,
   getComplaints,
   getComplaintById,
+  assignComplaint,
   updateComplaint,
 } from '../controllers/complaintController.js'
 
@@ -86,6 +87,14 @@ router.get(
   '/:id',
   authenticate,
   getComplaintById
+)
+
+// Admin - assign complaint to staff
+router.patch(
+  '/:id/assign',
+  authenticate,
+  authorizeRoles('ADMIN'),
+  assignComplaint
 )
 
 // Staff/Admin - update complaint

@@ -1,5 +1,4 @@
 import express from 'express'
-import { authorizeRoles } from '../middleware/roleMiddleware.js'
 
 import {
   getUsers,
@@ -9,6 +8,7 @@ import {
 } from '../controllers/userController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
+import { authorizeRoles } from '../middleware/roleMiddleware.js'
 
 const router = express.Router()
 
@@ -16,8 +16,7 @@ const router = express.Router()
 router.post('/', createUser)
 router.post('/login', loginUser)
 
-// Protected routes
-// Protected routes
+// Admin-only routes
 router.get(
   '/',
   authenticate,
@@ -31,4 +30,5 @@ router.patch(
   authorizeRoles('ADMIN'),
   updateUser
 )
+
 export default router

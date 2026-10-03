@@ -415,15 +415,16 @@ export const loginUser = async (req, res) => {
 
     // Create JWT token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: '7d',
-      }
-    )
+  {
+    userId: user._id,
+    role: user.role,
+    departmentId: user.departmentId?._id || null,
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: '7d',
+  }
+)
 
     const userResponse = user.toObject()
 

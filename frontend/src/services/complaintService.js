@@ -1,4 +1,5 @@
 import api from './api'
+
 export const createComplaint = async ({
   department,
   title,
@@ -41,16 +42,16 @@ export const createComplaint = async ({
 }
 
 export const getComplaints = async () => {
-  const response = await axios.get(
-    `${API_URL}/complaints`
+  const response = await api.get(
+    '/complaints'
   )
 
   return response.data
 }
 
 export const getComplaintById = async (id) => {
-  const response = await axios.get(
-    `${API_URL}/complaints/${id}`
+  const response = await api.get(
+    `/complaints/${id}`
   )
 
   return response.data
@@ -60,9 +61,23 @@ export const updateComplaint = async (
   id,
   complaintData
 ) => {
-  const response = await axios.patch(
-    `${API_URL}/complaints/${id}`,
+  const response = await api.patch(
+    `/complaints/${id}`,
     complaintData
+  )
+
+  return response.data
+}
+
+export const assignComplaint = async (
+  id,
+  staffId
+) => {
+  const response = await api.patch(
+    `/complaints/${id}/assign`,
+    {
+      staffId,
+    }
   )
 
   return response.data

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { getComplaintById } from '../../services/complaintService'
+import {
+  getComplaintById,
+  assignComplaint,
+} from '../../services/complaintService'
+
+import { getUsers } from '../../services/userService'
 
 const formatDateTime = (date) => {
   if (!date) {
@@ -22,14 +27,46 @@ function AdminComplaintDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const [staffMembers, setStaffMembers] = useState([])
+  const [selectedStaff, setSelectedStaff] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [assignError, setAssignError] = useState('')
+  const [assignSuccess, setAssignSuccess] = useState('')
+
   useEffect(() => {
-    const fetchComplaint = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
+        setError('')
 
-        const response = await getComplaintById(id)
+        const [complaintResponse, usersResponse] =
+          await Promise.all([
+            getComplaintById(id),
+            getUsers(),
+          ])
 
-        setComplaint(response.complaint)
+        const loadedComplaint =
+          complaintResponse.complaint
+
+        setComplaint(loadedComplaint)
+
+        const activeStaff = (
+          usersResponse.users || []
+        ).filter(
+          (user) =>
+            user.role === 'STAFF' &&
+            user.isActive === true &&
+            user.departmentId?._id?.toString() ===
+              loadedComplaint.departmentId?.toString()
+        )
+
+        setStaffMembers(activeStaff)
+
+        if (loadedComplaint.assignedTo) {
+          setSelectedStaff(
+            loadedComplaint.assignedTo.toString()
+          )
+        }
       } catch (error) {
         console.error(error)
         setError('Failed to load complaint.')
@@ -38,8 +75,41 @@ function AdminComplaintDetails() {
       }
     }
 
-    fetchComplaint()
+    fetchData()
   }, [id])
+
+  const handleAssign = async () => {
+    if (!selectedStaff) {
+      setAssignError('Please select a staff member.')
+      return
+    }
+
+    try {
+      setAssigning(true)
+      setAssignError('')
+      setAssignSuccess('')
+
+      const response = await assignComplaint(
+        id,
+        selectedStaff
+      )
+
+      setComplaint(response.complaint)
+
+      setAssignSuccess(
+        'Complaint assigned successfully.'
+      )
+    } catch (error) {
+      console.error(error)
+
+      setAssignError(
+        error.response?.data?.message ||
+          'Failed to assign complaint.'
+      )
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -152,7 +222,20 @@ function AdminComplaintDetails() {
                 </p>
 
                 <p className="mt-1 font-medium">
-                  {complaint.location}
+                  {typeof complaint.location ===
+                  'object'
+                    ? [
+                        complaint.location.province,
+                        complaint.location.district,
+                        complaint.location.municipality,
+                        complaint.location.ward
+                          ? `Ward ${complaint.location.ward}`
+                          : '',
+                        complaint.location.tole,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')
+                    : complaint.location}
                 </p>
               </div>
 
@@ -186,6 +269,96 @@ function AdminComplaintDetails() {
                 {complaint.description}
               </p>
             </div>
+          </div>
+
+          {/* Assignment */}
+          <div className="rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-xl font-semibold">
+              Assign Complaint
+            </h2>
+
+            <p className="mb-4 text-sm text-gray-500">
+              Assign this complaint to an active
+              staff member from the same department.
+            </p>
+
+            <div className="flex flex-col gap-3 md:flex-row">
+              <select
+                value={selectedStaff}
+                onChange={(event) => {
+                  setSelectedStaff(event.target.value)
+                  setAssignError('')
+                  setAssignSuccess('')
+                }}
+                className="w-full rounded-md border bg-white px-3 py-2 text-sm md:flex-1"
+              >
+                <option value="">
+                  Select staff member
+                </option>
+
+                {staffMembers.map((staff) => (
+                  <option
+                    key={staff._id}
+                    value={staff._id}
+                  >
+                    {staff.name}
+                    {staff.employeeId
+                      ? ` (${staff.employeeId})`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={handleAssign}
+                disabled={
+                  assigning ||
+                  staffMembers.length === 0
+                }
+                className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {assigning
+                  ? 'Assigning...'
+                  : 'Assign'}
+              </button>
+            </div>
+
+            {staffMembers.length === 0 && (
+              <p className="mt-3 text-sm text-gray-500">
+                No active staff members are available
+                in this department.
+              </p>
+            )}
+
+            {assignError && (
+              <p className="mt-3 text-sm text-red-600">
+                {assignError}
+              </p>
+            )}
+
+            {assignSuccess && (
+              <p className="mt-3 text-sm text-green-600">
+                {assignSuccess}
+              </p>
+            )}
+
+            {complaint.assignedTo && (
+              <div className="mt-4 rounded-md bg-gray-50 p-3">
+                <p className="text-sm text-gray-500">
+                  Currently Assigned
+                </p>
+
+                <p className="mt-1 font-medium">
+                  {staffMembers.find(
+                    (staff) =>
+                      staff._id.toString() ===
+                      complaint.assignedTo.toString()
+                  )?.name ||
+                    'Assigned staff member'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Current Status */}
@@ -285,3 +458,4 @@ function AdminComplaintDetails() {
 }
 
 export default AdminComplaintDetails
+

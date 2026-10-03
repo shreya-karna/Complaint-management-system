@@ -24,6 +24,12 @@ const complaintSchema = new mongoose.Schema(
       required: true,
     },
 
+    assignedTo: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'User',
+  default: null,
+},
+
     category: {
       type: String,
       required: true,

@@ -1,4 +1,5 @@
 import Complaint from '../models/Complaint.js'
+import User from '../models/User.js'
 
 const generateComplaintNumber = async () => {
   const year = new Date().getFullYear()
@@ -158,6 +159,26 @@ export const getComplaints = async (req, res) => {
 
     const filter = {}
 
+    // Citizens can only see their own complaints
+    if (req.user.role === 'CITIZEN') {
+      filter.userId = req.user.userId
+    }
+
+    // Staff can only see complaints from their department
+    if (req.user.role === 'STAFF') {
+      if (!req.user.departmentId) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'Staff account is not assigned to a department.',
+        })
+      }
+
+      filter.departmentId = req.user.departmentId
+    }
+
+    // Admin can see all complaints
+
     if (province) {
       filter['location.province'] = province
     }
@@ -191,26 +212,26 @@ export const getComplaints = async (req, res) => {
     }
 
     const complaints = await Complaint.find(filter)
-      .select(
-        '-userId -history'
-      )
+      .select('-userId -history')
       .sort({ createdAt: -1 })
 
-    const total = await Complaint.countDocuments(filter)
+    const total =
+      await Complaint.countDocuments(filter)
 
-    const statusCounts = await Complaint.aggregate([
-      {
-        $match: filter,
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: {
-            $sum: 1,
+    const statusCounts =
+      await Complaint.aggregate([
+        {
+          $match: filter,
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: {
+              $sum: 1,
+            },
           },
         },
-      },
-    ])
+      ])
 
     const statistics = {
       total: 0,
@@ -295,6 +316,35 @@ export const getComplaintById = async (req, res) => {
         message: 'Complaint not found.',
       })
     }
+
+    // Citizen can only view their own complaint
+    if (
+      req.user.role === 'CITIZEN' &&
+      complaint.userId?.toString() !==
+        req.user.userId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          'You are not authorized to view this complaint.',
+      })
+    }
+
+    // Staff can only view complaints
+    // belonging to their department
+    if (
+      req.user.role === 'STAFF' &&
+      complaint.departmentId?.toString() !==
+        req.user.departmentId?.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          'You are not authorized to view this complaint.',
+      })
+    }
+
+    // ADMIN can view any complaint
 
     return res.status(200).json({
       success: true,
@@ -418,6 +468,92 @@ export const updateComplaint = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to update complaint.',
+    })
+  }
+}
+
+export const assignComplaint = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { staffId } = req.body
+
+    if (!staffId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Staff member is required.',
+      })
+    }
+
+    const complaint =
+      await Complaint.findById(id)
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.',
+      })
+    }
+
+    const staff = await User.findById(staffId)
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff member not found.',
+      })
+    }
+
+    if (staff.role !== 'STAFF') {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected user is not a staff member.',
+      })
+    }
+
+    if (!staff.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected staff member is inactive.',
+      })
+    }
+
+    if (
+      !staff.departmentId ||
+      staff.departmentId.toString() !==
+        complaint.departmentId.toString()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Staff member does not belong to the complaint department.',
+      })
+    }
+
+    complaint.assignedTo = staff._id
+    complaint.status = 'ASSIGNED'
+
+    complaint.history.push({
+      status: 'ASSIGNED',
+      note: `Complaint assigned to ${staff.name}.`,
+      changedAt: new Date(),
+    })
+
+    await complaint.save()
+
+    return res.status(200).json({
+      success: true,
+      message: 'Complaint assigned successfully.',
+      complaint,
+    })
+  } catch (error) {
+    console.error(
+      'Assign complaint error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to assign complaint.',
     })
   }
 }
