@@ -1,5 +1,6 @@
 import Complaint from '../models/Complaint.js'
 import User from '../models/User.js'
+import { analyzeNewComplaint } from '../services/aiPipeline.js'
 
 const generateComplaintNumber = async () => {
   const year = new Date().getFullYear()
@@ -86,6 +87,21 @@ export const createComplaint = async (req, res) => {
       })
     }
 
+    // ===== AI & MAP =====
+    const latNum = parseFloat(req.body.lat)
+    const lngNum = parseFloat(req.body.lng)
+    const hasCoords = Number.isFinite(latNum) && Number.isFinite(lngNum)
+
+    const ai = await analyzeNewComplaint({
+      text: description.trim(),
+      category,
+      departmentId: department.id,
+      lat: hasCoords ? latNum : null,
+      lng: hasCoords ? lngNum : null,
+      address: req.body.address || '',
+    })
+    // ===== END AI & MAP =====
+
     const complaintNumber =
       await generateComplaintNumber()
 
@@ -115,8 +131,16 @@ export const createComplaint = async (req, res) => {
 
       attachments,
 
+      attachments,
+
+      // ===== AI & MAP =====
+      coordinates: hasCoords ? { lat: latNum, lng: lngNum } : undefined,
+      aiSummary: ai?.summary || '',
+      duplicateOf: ai?.duplicate?.duplicate_of || null,
+      // ===== END AI & MAP =====
+
       status: 'SUBMITTED',
-      priority: 'MEDIUM',
+      priority: ai?.priority || 'MEDIUM',
 
       history: [
         {
@@ -125,6 +149,13 @@ export const createComplaint = async (req, res) => {
         },
       ],
     })
+
+    if (ai?.duplicate) {
+      await Complaint.updateOne(
+        { _id: ai.duplicate.duplicate_of },
+        { $inc: { upvoteCount: 1 } }
+      )
+    }
 
     return res.status(201).json({
       success: true,
@@ -321,7 +352,7 @@ export const getComplaintById = async (req, res) => {
     if (
       req.user.role === 'CITIZEN' &&
       complaint.userId?.toString() !==
-        req.user.userId.toString()
+      req.user.userId.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -335,7 +366,7 @@ export const getComplaintById = async (req, res) => {
     if (
       req.user.role === 'STAFF' &&
       complaint.departmentId?.toString() !==
-        req.user.departmentId?.toString()
+      req.user.departmentId?.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -520,7 +551,7 @@ export const assignComplaint = async (req, res) => {
     if (
       !staff.departmentId ||
       staff.departmentId.toString() !==
-        complaint.departmentId.toString()
+      complaint.departmentId.toString()
     ) {
       return res.status(400).json({
         success: false,

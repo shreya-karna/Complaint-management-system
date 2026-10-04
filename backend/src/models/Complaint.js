@@ -182,7 +182,7 @@ const complaintSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // ===== END AI & MAP FIELDS =====
+
   },
   {
     timestamps: true,
