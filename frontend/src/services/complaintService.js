@@ -41,10 +41,14 @@ export const createComplaint = async ({
   return response.data
 }
 
-export const getComplaints = async () => {
-  const response = await api.get(
-    '/complaints'
-  )
+export const getComplaints = async (
+  assignedToMe = false
+) => {
+  const response = await api.get('/complaints', {
+    params: assignedToMe
+      ? { assignedToMe: 'true' }
+      : {},
+  })
 
   return response.data
 }
@@ -77,6 +81,20 @@ export const assignComplaint = async (
     `/complaints/${id}/assign`,
     {
       staffId,
+    }
+  )
+
+  return response.data
+}
+
+export const reopenComplaint = async (
+  id,
+  reason
+) => {
+  const response = await api.patch(
+    `/complaints/${id}/reopen`,
+    {
+      reason,
     }
   )
 

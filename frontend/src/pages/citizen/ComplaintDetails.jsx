@@ -8,7 +8,10 @@ import {
   CheckCircle,
 } from 'lucide-react'
 
-import { getComplaintById } from '../../services/complaintService'
+import {
+  getComplaintById,
+  reopenComplaint,
+} from '../../services/complaintService'
 
 const SERVER_URL =
   import.meta.env.VITE_API_URL?.replace(
@@ -43,6 +46,12 @@ function ComplaintDetails() {
   const [error, setError] =
     useState('')
 
+  const [reopenReason, setReopenReason] =
+    useState('')
+
+  const [isReopening, setIsReopening] =
+    useState(false)
+
   useEffect(() => {
     const fetchComplaint = async () => {
       try {
@@ -70,6 +79,40 @@ function ComplaintDetails() {
 
     fetchComplaint()
   }, [id])
+
+  const handleReopen = async () => {
+    if (!reopenReason.trim()) {
+      setError(
+        'Please provide a reason for reopening the complaint.'
+      )
+      return
+    }
+
+    try {
+      setIsReopening(true)
+      setError('')
+
+      const response = await reopenComplaint(
+        id,
+        reopenReason
+      )
+
+      setComplaint(response.complaint)
+      setReopenReason('')
+    } catch (error) {
+      console.error(
+        'Failed to reopen complaint:',
+        error
+      )
+
+      setError(
+        error.response?.data?.message ||
+          'Failed to reopen complaint.'
+      )
+    } finally {
+      setIsReopening(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -116,6 +159,7 @@ function ComplaintDetails() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-5xl px-6 py-10">
 
+        {/* Back button */}
         <button
           onClick={() =>
             navigate('/my-complaints')
@@ -126,6 +170,7 @@ function ComplaintDetails() {
           Back to My Complaints
         </button>
 
+        {/* Complaint heading */}
         <div className="mb-6">
           <p className="text-sm font-medium text-blue-600">
             {complaint.complaintNumber}
@@ -142,8 +187,10 @@ function ComplaintDetails() {
 
         <div className="grid gap-6 md:grid-cols-3">
 
+          {/* LEFT SIDE */}
           <div className="space-y-6 md:col-span-2">
 
+            {/* Complaint Details */}
             <div className="rounded-xl border bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold">
                 Complaint Details
@@ -151,6 +198,7 @@ function ComplaintDetails() {
 
               <div className="mt-5 space-y-5">
 
+                {/* Department */}
                 <div>
                   <p className="text-xs font-medium uppercase text-gray-400">
                     Department
@@ -161,6 +209,7 @@ function ComplaintDetails() {
                   </p>
                 </div>
 
+                {/* Category */}
                 <div>
                   <p className="text-xs font-medium uppercase text-gray-400">
                     Category
@@ -171,6 +220,7 @@ function ComplaintDetails() {
                   </p>
                 </div>
 
+                {/* Description */}
                 <div>
                   <p className="text-xs font-medium uppercase text-gray-400">
                     Description
@@ -181,6 +231,7 @@ function ComplaintDetails() {
                   </p>
                 </div>
 
+                {/* Location */}
                 <div>
                   <p className="text-xs font-medium uppercase text-gray-400">
                     Location
@@ -193,7 +244,21 @@ function ComplaintDetails() {
                     />
 
                     <span>
-                      {complaint.location}
+                      {complaint.location
+                        ? typeof complaint.location === 'string'
+                          ? complaint.location
+                          : [
+                              complaint.location.province,
+                              complaint.location.district,
+                              complaint.location.municipality,
+                              complaint.location.ward
+                                ? `Ward ${complaint.location.ward}`
+                                : '',
+                              complaint.location.tole,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')
+                        : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -201,12 +266,14 @@ function ComplaintDetails() {
               </div>
             </div>
 
+            {/* Attachments */}
             <div className="rounded-xl border bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold">
                 Attachments
               </h2>
 
-              {complaint.attachments?.length === 0 ? (
+              {!complaint.attachments ||
+              complaint.attachments.length === 0 ? (
                 <p className="mt-4 text-sm text-gray-500">
                   No attachments.
                 </p>
@@ -244,10 +311,52 @@ function ComplaintDetails() {
               )}
             </div>
 
+            {/* Reopen Complaint */}
+            {['RESOLVED', 'CLOSED'].includes(
+              complaint.status
+            ) && (
+              <div className="rounded-xl border bg-white p-6 shadow-sm">
+
+                <h2 className="text-lg font-semibold">
+                  Reopen Complaint
+                </h2>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  If the issue has not been completely
+                  resolved, you can reopen this complaint.
+                </p>
+
+                <textarea
+                  value={reopenReason}
+                  onChange={(event) =>
+                    setReopenReason(event.target.value)
+                  }
+                  placeholder="Explain why you want to reopen this complaint..."
+                  rows={4}
+                  className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+                />
+
+                <button
+                  onClick={handleReopen}
+                  disabled={isReopening}
+                  className="mt-3 w-full rounded-lg bg-black px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isReopening
+                    ? 'Reopening...'
+                    : 'Reopen Complaint'}
+                </button>
+
+              </div>
+            )}
+
           </div>
 
+          {/* RIGHT SIDE */}
           <div>
+
+            {/* Complaint Status */}
             <div className="rounded-xl border bg-white p-6 shadow-sm">
+
               <h2 className="text-lg font-semibold">
                 Complaint Status
               </h2>
@@ -269,7 +378,9 @@ function ComplaintDetails() {
                 </div>
               </div>
 
+              {/* Status History */}
               <div className="mt-6 border-t pt-5">
+
                 <div className="flex items-center gap-2">
                   <Clock size={18} />
 
@@ -279,6 +390,7 @@ function ComplaintDetails() {
                 </div>
 
                 <div className="mt-4 space-y-4">
+
                   {complaint.history?.length > 0 ? (
                     complaint.history.map(
                       (item, index) => (
@@ -309,10 +421,13 @@ function ComplaintDetails() {
                       No status history available.
                     </p>
                   )}
+
                 </div>
               </div>
+
             </div>
 
+            {/* Priority */}
             <div className="mt-6 rounded-xl border bg-white p-6 shadow-sm">
               <p className="text-xs font-medium uppercase text-gray-400">
                 Priority
@@ -322,6 +437,7 @@ function ComplaintDetails() {
                 {complaint.priority}
               </p>
             </div>
+
           </div>
 
         </div>

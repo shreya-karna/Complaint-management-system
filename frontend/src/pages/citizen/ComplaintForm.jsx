@@ -15,6 +15,10 @@ import {
 import { createComplaint } from '@/services/complaintService'
 import { getCategories } from '@/services/categoryService'
 
+import provinces from '@/data/provinces.json'
+import districts from '@/data/districts.json'
+import localLevels from '@/data/localLevels.json'
+
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -29,8 +33,7 @@ function ComplaintForm() {
 
   const department = location.state?.department
 
-  const [formData, setFormData] =
-  useState({
+  const [formData, setFormData] = useState({
     title: '',
     category: '',
     description: '',
@@ -43,8 +46,7 @@ function ComplaintForm() {
 
   const [files, setFiles] = useState([])
 
-  const [categories, setCategories] =
-    useState([])
+  const [categories, setCategories] = useState([])
 
   const [categoriesLoading, setCategoriesLoading] =
     useState(true)
@@ -56,6 +58,23 @@ function ComplaintForm() {
 
   const [isSubmitting, setIsSubmitting] =
     useState(false)
+
+  const [availableDistricts, setAvailableDistricts] =
+    useState([])
+
+  const [availableMunicipalities, setAvailableMunicipalities] =
+    useState([])
+
+  // Ward numbers available in the dropdown.
+  // localLevels.json does not contain ward data.
+  // const wardOptions = Array.from(
+  //   { length: 35 },
+  //   (_, index) => index + 1
+  // )
+
+  // --------------------------------------------------
+  // Load categories for selected department
+  // --------------------------------------------------
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -70,9 +89,7 @@ function ComplaintForm() {
         setCategoriesError('')
 
         const response =
-          await getCategories(
-            department.id
-          )
+          await getCategories(department.id)
 
         const activeCategories = (
           response.categories || []
@@ -99,37 +116,124 @@ function ComplaintForm() {
     loadCategories()
   }, [department?.id])
 
-  if (!department) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-6">
-          <Card className="w-full">
-            <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold text-slate-900">
-                Department not selected
-              </h2>
+  // --------------------------------------------------
+  // Province -> District
+  // --------------------------------------------------
 
-              <p className="mt-2 text-slate-500">
-                Please select a department before
-                submitting a complaint.
-              </p>
+  useEffect(() => {
+    if (!formData.province) {
+      setAvailableDistricts([])
+      return
+    }
 
-              <Button
-                className="mt-6"
-                onClick={() =>
-                  navigate(
-                    '/select-department'
-                  )
-                }
-              >
-                Select Department
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    const filteredDistricts =
+      districts.filter(
+        (district) =>
+          district.province_code ===
+          formData.province
+      )
+
+    setAvailableDistricts(filteredDistricts)
+  }, [formData.province])
+
+  // --------------------------------------------------
+  // District -> Municipality
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!formData.district) {
+      setAvailableMunicipalities([])
+      return
+    }
+
+    const filteredMunicipalities =
+      localLevels.filter(
+        (localLevel) =>
+          localLevel.district_code ===
+          formData.district
+      )
+
+    setAvailableMunicipalities(
+      filteredMunicipalities
     )
+  }, [formData.district])
+
+  // --------------------------------------------------
+  // Province change
+  // --------------------------------------------------
+
+  const handleProvinceChange = (event) => {
+    const provinceCode =
+      event.target.value
+
+    setFormData((previous) => ({
+      ...previous,
+      province: provinceCode,
+      district: '',
+      municipality: '',
+      ward: '',
+    }))
+
+    setErrors((previous) => ({
+      ...previous,
+      province: '',
+      district: '',
+      municipality: '',
+      ward: '',
+    }))
+
+    setAvailableMunicipalities([])
   }
+
+  // --------------------------------------------------
+  // District change
+  // --------------------------------------------------
+
+  const handleDistrictChange = (event) => {
+    const districtCode =
+      event.target.value
+
+    setFormData((previous) => ({
+      ...previous,
+      district: districtCode,
+      municipality: '',
+      ward: '',
+    }))
+
+    setErrors((previous) => ({
+      ...previous,
+      district: '',
+      municipality: '',
+      ward: '',
+    }))
+  }
+
+  // --------------------------------------------------
+  // Municipality change
+  // --------------------------------------------------
+
+  const handleMunicipalityChange = (
+    event
+  ) => {
+    const municipalityName =
+      event.target.value
+
+    setFormData((previous) => ({
+      ...previous,
+      municipality: municipalityName,
+      ward: '',
+    }))
+
+    setErrors((previous) => ({
+      ...previous,
+      municipality: '',
+      ward: '',
+    }))
+  }
+
+  // --------------------------------------------------
+  // Normal input change
+  // --------------------------------------------------
 
   const handleChange = (event) => {
     const {
@@ -148,9 +252,11 @@ function ComplaintForm() {
     }))
   }
 
-  const handleFileChange = (
-    event
-  ) => {
+  // --------------------------------------------------
+  // File handling
+  // --------------------------------------------------
+
+  const handleFileChange = (event) => {
     const selectedFiles = Array.from(
       event.target.files || []
     )
@@ -218,6 +324,10 @@ function ComplaintForm() {
     )
   }
 
+  // --------------------------------------------------
+  // Validation
+  // --------------------------------------------------
+
   const validateForm = () => {
     const newErrors = {}
 
@@ -238,25 +348,25 @@ function ComplaintForm() {
         'Complaint description is required.'
     }
 
-    if (!formData.province.trim()) {
-  newErrors.province =
-    'Province is required.'
-}
+    if (!formData.province) {
+      newErrors.province =
+        'Province is required.'
+    }
 
-if (!formData.district.trim()) {
-  newErrors.district =
-    'District is required.'
-}
+    if (!formData.district) {
+      newErrors.district =
+        'District is required.'
+    }
 
-if (!formData.municipality.trim()) {
-  newErrors.municipality =
-    'Municipality is required.'
-}
+    if (!formData.municipality) {
+      newErrors.municipality =
+        'Municipality is required.'
+    }
 
-if (!formData.ward.trim()) {
-  newErrors.ward =
-    'Ward is required.'
-}
+    if (!formData.ward) {
+      newErrors.ward =
+        'Ward is required.'
+    }
 
     setErrors(newErrors)
 
@@ -264,6 +374,10 @@ if (!formData.ward.trim()) {
       Object.keys(newErrors).length === 0
     )
   }
+
+  // --------------------------------------------------
+  // Submit complaint
+  // --------------------------------------------------
 
   const handleSubmit = async (
     event
@@ -282,6 +396,32 @@ if (!formData.ward.trim()) {
     }))
 
     try {
+      // Convert selected codes/names into
+      // the actual English names before sending.
+
+      const selectedProvince =
+        provinces.find(
+          (province) =>
+            province.code ===
+            formData.province
+        )
+
+      const selectedDistrict =
+        districts.find(
+          (district) =>
+            district.code ===
+            formData.district
+        )
+
+      const selectedMunicipality =
+        localLevels.find(
+          (municipality) =>
+            municipality.district_code ===
+              formData.district &&
+            municipality.name_en ===
+              formData.municipality
+        )
+
       const result =
         await createComplaint({
           department,
@@ -295,21 +435,24 @@ if (!formData.ward.trim()) {
             formData.description,
 
           province:
-  formData.province,
+            selectedProvince?.name_en ||
+            '',
 
-district:
-  formData.district,
+          district:
+            selectedDistrict?.name_en ||
+            '',
 
-municipality:
-  formData.municipality,
+          municipality:
+            selectedMunicipality?.name_en ||
+            '',
 
-ward:
-  formData.ward,
+          ward:
+            formData.ward,
 
-tole:
-  formData.tole,
+          tole:
+            formData.tole,
 
-files,
+          files,
         })
 
       navigate(
@@ -341,8 +484,46 @@ files,
     }
   }
 
+  // --------------------------------------------------
+  // Department missing
+  // --------------------------------------------------
+
+  if (!department) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center px-6">
+          <Card className="w-full">
+            <CardContent className="p-8 text-center">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Department not selected
+              </h2>
+
+              <p className="mt-2 text-slate-500">
+                Please select a department before
+                submitting a complaint.
+              </p>
+
+              <Button
+                className="mt-6"
+                onClick={() =>
+                  navigate(
+                    '/select-department'
+                  )
+                }
+              >
+                Select Department
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* Header */}
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center px-6 py-4">
           <div>
@@ -358,6 +539,8 @@ files,
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-10">
+
+        {/* Back */}
         <button
           type="button"
           onClick={() =>
@@ -372,6 +555,7 @@ files,
         </button>
 
         <Card>
+
           <CardHeader>
             <CardTitle className="text-2xl">
               Submit a Complaint
@@ -386,11 +570,16 @@ files,
           </CardHeader>
 
           <CardContent>
+
             <form
               onSubmit={handleSubmit}
               className="space-y-6"
             >
+
+              {/* -------------------------------- */}
               {/* Title */}
+              {/* -------------------------------- */}
+
               <div>
                 <label
                   htmlFor="title"
@@ -415,7 +604,10 @@ files,
                 )}
               </div>
 
+              {/* -------------------------------- */}
               {/* Category */}
+              {/* -------------------------------- */}
+
               <div>
                 <label
                   htmlFor="category"
@@ -477,7 +669,10 @@ files,
                 )}
               </div>
 
+              {/* -------------------------------- */}
               {/* Description */}
+              {/* -------------------------------- */}
+
               <div>
                 <label
                   htmlFor="description"
@@ -505,109 +700,223 @@ files,
                 )}
               </div>
 
+              {/* -------------------------------- */}
               {/* Location */}
-              {/* Location */}
-<div className="space-y-4">
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Province
-    </label>
+              {/* -------------------------------- */}
 
-    <input
-      name="province"
-      value={formData.province}
-      onChange={handleChange}
-      placeholder="Enter province"
-      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-    />
+              <div className="space-y-4">
 
-    {errors.province && (
-      <p className="mt-1 text-sm text-red-600">
-        {errors.province}
-      </p>
-    )}
-  </div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Complaint Location
+                </h3>
 
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      District
-    </label>
+                {/* Province */}
 
-    <input
-      name="district"
-      value={formData.district}
-      onChange={handleChange}
-      placeholder="Enter district"
-      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-    />
+                <div>
+                  <label
+                    htmlFor="province"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Province
+                  </label>
 
-    {errors.district && (
-      <p className="mt-1 text-sm text-red-600">
-        {errors.district}
-      </p>
-    )}
-  </div>
+                  <select
+                    id="province"
+                    name="province"
+                    value={
+                      formData.province
+                    }
+                    onChange={
+                      handleProvinceChange
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">
+                      Select province
+                    </option>
 
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Municipality
-    </label>
+                    {provinces.map(
+                      (province) => (
+                        <option
+                          key={province.code}
+                          value={province.code}
+                        >
+                          {province.name_en}
+                        </option>
+                      )
+                    )}
+                  </select>
 
-    <input
-      name="municipality"
-      value={formData.municipality}
-      onChange={handleChange}
-      placeholder="Enter municipality"
-      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-    />
+                  {errors.province && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.province}
+                    </p>
+                  )}
+                </div>
 
-    {errors.municipality && (
-      <p className="mt-1 text-sm text-red-600">
-        {errors.municipality}
-      </p>
-    )}
-  </div>
+                {/* District */}
 
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Ward
-    </label>
+                <div>
+                  <label
+                    htmlFor="district"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    District
+                  </label>
 
-    <input
-      name="ward"
-      value={formData.ward}
-      onChange={handleChange}
-      placeholder="Enter ward number"
-      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-    />
+                  <select
+                    id="district"
+                    name="district"
+                    value={
+                      formData.district
+                    }
+                    onChange={
+                      handleDistrictChange
+                    }
+                    disabled={
+                      !formData.province
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {!formData.province
+                        ? 'Select province first'
+                        : 'Select district'}
+                    </option>
 
-    {errors.ward && (
-      <p className="mt-1 text-sm text-red-600">
-        {errors.ward}
-      </p>
-    )}
-  </div>
+                    {availableDistricts.map(
+                      (district) => (
+                        <option
+                          key={`${district.province_code}-${district.code}`}
+                          value={
+                            district.code
+                          }
+                        >
+                          {district.name_en}
+                        </option>
+                      )
+                    )}
+                  </select>
 
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Tole
-      <span className="ml-1 text-xs font-normal text-slate-400">
-        (Optional)
-      </span>
-    </label>
+                  {errors.district && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.district}
+                    </p>
+                  )}
+                </div>
 
-    <input
-      name="tole"
-      value={formData.tole}
-      onChange={handleChange}
-      placeholder="Enter tole"
-      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-    />
-  </div>
+                {/* Municipality */}
+
+                <div>
+                  <label
+                    htmlFor="municipality"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Municipality / Rural Municipality
+                  </label>
+
+                  <select
+                    id="municipality"
+                    name="municipality"
+                    value={
+                      formData.municipality
+                    }
+                    onChange={
+                      handleMunicipalityChange
+                    }
+                    disabled={
+                      !formData.district
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {!formData.district
+                        ? 'Select district first'
+                        : 'Select municipality'}
+                    </option>
+
+                    {availableMunicipalities.map(
+                      (municipality, index) => (
+                        <option
+                          key={`${municipality.district_code}-${municipality.name_en}-${index}`}
+                          value={
+                            municipality.name_en
+                          }
+                        >
+                          {municipality.name_en}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  {errors.municipality && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.municipality}
+                    </p>
+                  )}
+                </div>
+
+                {/* Ward */}
+
+<div>
+  <label
+    htmlFor="ward"
+    className="mb-2 block text-sm font-medium text-slate-700"
+  >
+    Ward Number
+  </label>
+
+  <input
+    id="ward"
+    name="ward"
+    type="number"
+    min="1"
+    max="35"
+    value={formData.ward}
+    onChange={handleChange}
+    disabled={!formData.municipality}
+    placeholder="Enter ward number"
+    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+  />
+
+  {errors.ward && (
+    <p className="mt-1 text-sm text-red-600">
+      {errors.ward}
+    </p>
+  )}
 </div>
 
+                {/* Tole */}
+
+                <div>
+                  <label
+                    htmlFor="tole"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Tole
+                    <span className="ml-1 text-xs font-normal text-slate-400">
+                      (Optional)
+                    </span>
+                  </label>
+
+                  <input
+                    id="tole"
+                    name="tole"
+                    value={formData.tole}
+                    onChange={handleChange}
+                    placeholder="Enter tole / street"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+
+              </div>
+
+              {/* -------------------------------- */}
               {/* Attachments */}
+              {/* -------------------------------- */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Attachments
                 </label>
@@ -645,9 +954,9 @@ files,
                   </p>
                 )}
 
-                {/* File previews */}
                 {files.length > 0 && (
                   <div className="mt-5 space-y-4">
+
                     <p className="text-sm font-semibold text-slate-700">
                       Attachment Preview
                     </p>
@@ -673,6 +982,7 @@ files,
                             key={`${file.name}-${index}`}
                             className="overflow-hidden rounded-lg border bg-white"
                           >
+
                             {isImage && (
                               <div className="flex max-h-80 items-center justify-center bg-slate-100 p-3">
                                 <img
@@ -723,7 +1033,9 @@ files,
                               )}
 
                             <div className="flex items-center justify-between gap-4 border-t p-4">
+
                               <div className="flex min-w-0 items-center gap-3">
+
                                 {isImage ? (
                                   <ImageIcon className="h-5 w-5 shrink-0 text-blue-500" />
                                 ) : (
@@ -731,6 +1043,7 @@ files,
                                 )}
 
                                 <div className="min-w-0">
+
                                   <p className="truncate text-sm font-medium text-slate-900">
                                     {
                                       file.name
@@ -746,7 +1059,9 @@ files,
                                     )}{' '}
                                     KB
                                   </p>
+
                                 </div>
+
                               </div>
 
                               <button
@@ -761,24 +1076,35 @@ files,
                               >
                                 <X className="h-5 w-5" />
                               </button>
+
                             </div>
+
                           </div>
                         )
                       }
                     )}
+
                   </div>
                 )}
+
               </div>
 
-              {/* Submit error */}
+              {/* -------------------------------- */}
+              {/* Submit Error */}
+              {/* -------------------------------- */}
+
               {errors.submit && (
                 <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {errors.submit}
                 </div>
               )}
 
+              {/* -------------------------------- */}
               {/* Submit */}
+              {/* -------------------------------- */}
+
               <div className="flex justify-end border-t pt-6">
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}
@@ -787,10 +1113,14 @@ files,
                     ? 'Submitting...'
                     : 'Submit Complaint'}
                 </Button>
+
               </div>
+
             </form>
+
           </CardContent>
         </Card>
+
       </main>
     </div>
   )

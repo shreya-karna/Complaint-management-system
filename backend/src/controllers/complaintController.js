@@ -30,7 +30,11 @@ export const createComplaint = async (req, res) => {
       title,
       category,
       description,
-      location,
+      province,
+      district,
+      municipality,
+      ward,
+      tole,
     } = req.body
 
     let department
@@ -79,29 +83,41 @@ export const createComplaint = async (req, res) => {
       })
     }
 
-    if (!location?.trim()) {
+    if (
+      !province?.trim() ||
+      !district?.trim() ||
+      !municipality?.trim() ||
+      !ward?.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Location is required.',
+        message: 'Complete complaint location is required.',
       })
+    }
+
+    const location = {
+      province: province.trim(),
+      district: district.trim(),
+      municipality: municipality.trim(),
+      ward: ward.trim(),
+      tole: tole?.trim() || '',
     }
 
     const complaintNumber =
       await generateComplaintNumber()
 
-    const attachments = (
-      req.files || []
-    ).map((file) => ({
-      name: file.originalname,
-      type: file.mimetype,
-      size: file.size,
-      url: `/uploads/${file.filename}`,
-    }))
+    const attachments = (req.files || []).map(
+      (file) => ({
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size,
+        url: `/uploads/${file.filename}`,
+      })
+    )
 
     const complaint = await Complaint.create({
       complaintNumber,
 
-      // Get the logged-in user's ID from the JWT
       userId: req.user.userId,
 
       departmentId: department.id,
@@ -147,15 +163,16 @@ export const createComplaint = async (req, res) => {
 export const getComplaints = async (req, res) => {
   try {
     const {
-      province,
-      district,
-      municipality,
-      ward,
-      departmentId,
-      category,
-      status,
-      priority,
-    } = req.query
+  province,
+  district,
+  municipality,
+  ward,
+  departmentId,
+  category,
+  status,
+  priority,
+  assignedToMe,
+} = req.query
 
     const filter = {}
 
@@ -164,18 +181,24 @@ export const getComplaints = async (req, res) => {
       filter.userId = req.user.userId
     }
 
-    // Staff can only see complaints from their department
-    if (req.user.role === 'STAFF') {
-      if (!req.user.departmentId) {
-        return res.status(403).json({
-          success: false,
-          message:
-            'Staff account is not assigned to a department.',
-        })
-      }
+ // Staff can see complaints from their department
+if (req.user.role === 'STAFF') {
+  if (!req.user.departmentId) {
+    return res.status(403).json({
+      success: false,
+      message:
+        'Staff account is not assigned to a department.',
+    })
+  }
 
-      filter.departmentId = req.user.departmentId
-    }
+  filter.departmentId = req.user.departmentId
+
+  // If requested, show only complaints assigned
+  // to the currently logged-in staff member.
+  if (assignedToMe === 'true') {
+    filter.assignedTo = req.user.userId
+  }
+}
 
     // Admin can see all complaints
 
@@ -195,9 +218,12 @@ export const getComplaints = async (req, res) => {
       filter['location.ward'] = ward
     }
 
-    if (departmentId) {
-      filter.departmentId = departmentId
-    }
+    if (
+  departmentId &&
+  req.user.role !== 'STAFF'
+) {
+  filter.departmentId = departmentId
+}
 
     if (category) {
       filter.category = category
@@ -375,14 +401,11 @@ export const updateComplaint = async (req, res) => {
     } = req.body
 
     const allowedStatuses = [
-      'SUBMITTED',
       'UNDER_REVIEW',
-      'ASSIGNED',
       'IN_PROGRESS',
       'RESOLVED',
       'CLOSED',
       'REJECTED',
-      'REOPENED',
     ]
 
     if (!status) {
@@ -429,6 +452,22 @@ export const updateComplaint = async (req, res) => {
       })
     }
 
+    // Staff can only update complaints
+    // that are assigned to them.
+    if (req.user.role === 'STAFF') {
+      if (
+        !complaint.assignedTo ||
+        complaint.assignedTo.toString() !==
+          req.user.userId.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'You can only update complaints assigned to you.',
+        })
+      }
+    }
+
     const previousStatus = complaint.status
 
     complaint.status = status
@@ -468,6 +507,84 @@ export const updateComplaint = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to update complaint.',
+    })
+  }
+}
+
+export const reopenComplaint = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+
+    if (!reason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reopening reason is required.',
+      })
+    }
+
+    const complaint = await Complaint.findById(id)
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.',
+      })
+    }
+
+    // Only the citizen who created the complaint
+    // can reopen it.
+    if (
+      complaint.userId?.toString() !==
+      req.user.userId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          'You are not authorized to reopen this complaint.',
+      })
+    }
+
+    // A complaint can only be reopened
+    // after it has been resolved or closed.
+    if (
+      !['RESOLVED', 'CLOSED'].includes(
+        complaint.status
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Only resolved or closed complaints can be reopened.',
+      })
+    }
+
+    const previousStatus = complaint.status
+
+    complaint.status = 'REOPENED'
+
+    complaint.history.push({
+      status: 'REOPENED',
+      note: `Complaint reopened by citizen. Reason: ${reason.trim()}`,
+      changedAt: new Date(),
+    })
+
+    await complaint.save()
+
+    return res.status(200).json({
+      success: true,
+      message: 'Complaint reopened successfully.',
+      complaint,
+    })
+  } catch (error) {
+    console.error(
+      'Reopen complaint error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reopen complaint.',
     })
   }
 }

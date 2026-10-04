@@ -445,3 +445,38 @@ export const loginUser = async (req, res) => {
     })
   }
 }
+
+export const getStaffByDepartment = async (req, res) => {
+  try {
+    const { departmentId } = req.params
+
+    if (!departmentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department ID is required.',
+      })
+    }
+
+    const staff = await User.find({
+      role: 'STAFF',
+      departmentId,
+    })
+      .select('-password')
+      .sort({ name: 1 })
+
+    res.status(200).json({
+      success: true,
+      staff,
+    })
+  } catch (error) {
+    console.error(
+      'Get staff by department error:',
+      error
+    )
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch department staff.',
+    })
+  }
+}

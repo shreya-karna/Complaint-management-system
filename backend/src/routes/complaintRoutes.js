@@ -8,6 +8,7 @@ import {
   getComplaintById,
   assignComplaint,
   updateComplaint,
+  reopenComplaint,
 } from '../controllers/complaintController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
@@ -95,6 +96,14 @@ router.patch(
   authenticate,
   authorizeRoles('ADMIN'),
   assignComplaint
+)
+
+// Citizen - reopen complaint
+router.patch(
+  '/:id/reopen',
+  authenticate,
+  authorizeRoles('CITIZEN'),
+  reopenComplaint
 )
 
 // Staff/Admin - update complaint
