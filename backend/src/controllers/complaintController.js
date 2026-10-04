@@ -1,10 +1,7 @@
 import Complaint from '../models/Complaint.js'
 import User from '../models/User.js'
-<<<<<<< HEAD
-import { analyzeNewComplaint } from '../services/aiPipeline.js'
-=======
 import Notification from '../models/Notification.js'
->>>>>>> origin/main
+import { analyzeNewComplaint } from '../services/aiPipeline.js'
 
 const generateComplaintNumber = async () => {
   const year = new Date().getFullYear()
@@ -108,6 +105,21 @@ export const createComplaint = async (req, res) => {
       tole: tole?.trim() || '',
     }
 
+    // ===== AI & MAP =====
+    const latNum = parseFloat(req.body.lat)
+    const lngNum = parseFloat(req.body.lng)
+    const hasCoords = Number.isFinite(latNum) && Number.isFinite(lngNum)
+
+    const ai = await analyzeNewComplaint({
+      text: description.trim(),
+      category,
+      departmentId: department.id,
+      lat: hasCoords ? latNum : null,
+      lng: hasCoords ? lngNum : null,
+      address: req.body.address || '',
+    })
+    // ===== END AI & MAP =====
+
     const complaintNumber =
       await generateComplaintNumber()
 
@@ -133,8 +145,6 @@ export const createComplaint = async (req, res) => {
 
       description: description.trim(),
       location,
-
-      attachments,
 
       attachments,
 
@@ -183,16 +193,16 @@ export const createComplaint = async (req, res) => {
 export const getComplaints = async (req, res) => {
   try {
     const {
-  province,
-  district,
-  municipality,
-  ward,
-  departmentId,
-  category,
-  status,
-  priority,
-  assignedToMe,
-} = req.query
+      province,
+      district,
+      municipality,
+      ward,
+      departmentId,
+      category,
+      status,
+      priority,
+      assignedToMe,
+    } = req.query
 
     const filter = {}
 
@@ -201,24 +211,24 @@ export const getComplaints = async (req, res) => {
       filter.userId = req.user.userId
     }
 
- // Staff can see complaints from their department
-if (req.user.role === 'STAFF') {
-  if (!req.user.departmentId) {
-    return res.status(403).json({
-      success: false,
-      message:
-        'Staff account is not assigned to a department.',
-    })
-  }
+    // Staff can see complaints from their department
+    if (req.user.role === 'STAFF') {
+      if (!req.user.departmentId) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'Staff account is not assigned to a department.',
+        })
+      }
 
-  filter.departmentId = req.user.departmentId
+      filter.departmentId = req.user.departmentId
 
-  // If requested, show only complaints assigned
-  // to the currently logged-in staff member.
-  if (assignedToMe === 'true') {
-    filter.assignedTo = req.user.userId
-  }
-}
+      // If requested, show only complaints assigned
+      // to the currently logged-in staff member.
+      if (assignedToMe === 'true') {
+        filter.assignedTo = req.user.userId
+      }
+    }
 
     // Admin can see all complaints
 
@@ -239,11 +249,11 @@ if (req.user.role === 'STAFF') {
     }
 
     if (
-  departmentId &&
-  req.user.role !== 'STAFF'
-) {
-  filter.departmentId = departmentId
-}
+      departmentId &&
+      req.user.role !== 'STAFF'
+    ) {
+      filter.departmentId = departmentId
+    }
 
     if (category) {
       filter.category = category
@@ -605,7 +615,7 @@ export const updateComplaint = async (req, res) => {
       if (
         !complaint.assignedTo ||
         complaint.assignedTo.toString() !==
-          req.user.userId.toString()
+        req.user.userId.toString()
       ) {
         return res.status(403).json({
           success: false,
