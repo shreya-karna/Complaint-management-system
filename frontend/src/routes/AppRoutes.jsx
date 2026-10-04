@@ -12,6 +12,8 @@ import ComplaintForm from '../pages/citizen/ComplaintForm'
 import ComplaintSubmitted from '../pages/citizen/ComplaintSubmitted'
 import MyComplaints from '../pages/citizen/MyComplaints'
 import ComplaintDetails from '../pages/citizen/ComplaintDetails'
+import TrackComplaint from '../pages/citizen/TrackComplaint'
+import PublicComplaints from '../pages/citizen/PublicComplaints'
 
 import StaffDashboard from '../pages/staff/StaffDashboard'
 import AssignedComplaints from '../pages/staff/AssignedComplaints'
@@ -59,6 +61,16 @@ function AppRoutes() {
               path="/my-complaints"
               element={<MyComplaints />}
             />
+<Route
+  path="/track-complaint"
+  element={<TrackComplaint />}
+/>
+
+<Route
+  path="/public-complaints"
+  element={<PublicComplaints />}
+/>
+
             <Route
               path="/complaints/:id"
               element={<ComplaintDetails />}

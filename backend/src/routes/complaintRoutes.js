@@ -6,8 +6,11 @@ import {
   createComplaint,
   getComplaints,
   getComplaintById,
+  getPublicComplaints,
+  trackComplaint,
   assignComplaint,
   updateComplaint,
+  reopenComplaint,
 } from '../controllers/complaintController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
@@ -82,6 +85,19 @@ router.get(
   getComplaints
 )
 
+// Logged-in users - track complaint
+router.get(
+  '/track',
+  authenticate,
+  trackComplaint
+)
+
+router.get(
+  '/public',
+  authenticate,
+  getPublicComplaints
+)
+
 // Logged-in users - view one complaint
 router.get(
   '/:id',
@@ -95,6 +111,14 @@ router.patch(
   authenticate,
   authorizeRoles('ADMIN'),
   assignComplaint
+)
+
+// Citizen - reopen complaint
+router.patch(
+  '/:id/reopen',
+  authenticate,
+  authorizeRoles('CITIZEN'),
+  reopenComplaint
 )
 
 // Staff/Admin - update complaint

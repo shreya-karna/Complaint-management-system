@@ -6,41 +6,65 @@ import {
   LoaderCircle,
   CheckCircle,
   ArrowRight,
+  Bell,
 } from 'lucide-react'
 
 import { getComplaints } from '../../services/complaintService'
+import {
+  getNotifications,
+  markNotificationAsRead,
+} from '../../services/notificationService'
 
 function StaffDashboard() {
   const navigate = useNavigate()
 
   const [complaints, setComplaints] = useState([])
+  const [notifications, setNotifications] =
+    useState([])
+
+  const [showNotifications, setShowNotifications] =
+    useState(false)
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const fetchComplaints = async () => {
+    const fetchDashboardData = async () => {
       try {
         setIsLoading(true)
+        setError('')
 
-        const response = await getComplaints()
+        const [
+          complaintsResponse,
+          notificationsResponse,
+        ] = await Promise.all([
+          getComplaints(),
+          getNotifications(),
+        ])
 
-        setComplaints(response.complaints || [])
+        setComplaints(
+          complaintsResponse.complaints || []
+        )
+
+        setNotifications(
+          notificationsResponse.notifications || []
+        )
       } catch (error) {
         console.error(
-          'Failed to fetch complaints:',
+          'Failed to fetch staff dashboard data:',
           error
         )
 
         setError(
           error.response?.data?.message ||
-            'Failed to load complaints.'
+            'Failed to load dashboard.'
         )
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchComplaints()
+    fetchDashboardData()
   }, [])
 
   const totalComplaints = complaints.length
@@ -70,9 +94,50 @@ function StaffDashboard() {
     5
   )
 
+  const unreadCount = notifications.filter(
+    (notification) =>
+      !notification.isRead
+  ).length
+
+  const handleNotificationClick = async (
+    notification
+  ) => {
+    try {
+      if (!notification.isRead) {
+        await markNotificationAsRead(
+          notification._id
+        )
+
+        setNotifications((current) =>
+          current.map((item) =>
+            item._id === notification._id
+              ? {
+                  ...item,
+                  isRead: true,
+                }
+              : item
+          )
+        )
+      }
+
+      setShowNotifications(false)
+
+      if (notification.complaintId?._id) {
+        navigate(
+          `/staff/complaints/${notification.complaintId._id}`
+        )
+      }
+    } catch (error) {
+      console.error(
+        'Failed to mark notification as read:',
+        error
+      )
+    }
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-gray-500">
           Loading staff dashboard...
         </p>
@@ -82,7 +147,6 @@ function StaffDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       <div className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <div>
@@ -95,20 +159,111 @@ function StaffDashboard() {
             </h1>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              navigate('/staff/complaints')
-            }
-            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            View Complaints
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setShowNotifications(
+                    (current) => !current
+                  )
+                }
+                className="relative rounded-md border bg-white p-2 hover:bg-gray-50"
+                aria-label="Notifications"
+              >
+                <Bell size={20} />
+
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                    {unreadCount > 9
+                      ? '9+'
+                      : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-xl border bg-white shadow-lg">
+                  <div className="border-b px-4 py-3">
+                    <h3 className="font-semibold">
+                      Notifications
+                    </h3>
+
+                    <p className="text-xs text-gray-500">
+                      {unreadCount} unread
+                    </p>
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm text-gray-500">
+                        No notifications.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.map(
+                        (notification) => (
+                          <button
+                            key={notification._id}
+                            type="button"
+                            onClick={() =>
+                              handleNotificationClick(
+                                notification
+                              )
+                            }
+                            className={`w-full border-b px-4 py-4 text-left hover:bg-gray-50 ${
+                              !notification.isRead
+                                ? 'bg-blue-50'
+                                : 'bg-white'
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <Bell
+                                size={18}
+                                className="mt-0.5 shrink-0"
+                              />
+
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold">
+                                  {notification.title}
+                                </p>
+
+                                <p className="mt-1 text-xs text-gray-600">
+                                  {notification.message}
+                                </p>
+
+                                <p className="mt-2 text-[11px] text-gray-400">
+                                  {new Date(
+                                    notification.createdAt
+                                  ).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate('/staff/complaints')
+              }
+              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              View Complaints
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-8">
-
         {error && (
           <div className="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-600">
             {error}
@@ -116,7 +271,6 @@ function StaffDashboard() {
         )}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
@@ -172,11 +326,9 @@ function StaffDashboard() {
               {resolvedComplaints}
             </p>
           </div>
-
         </div>
 
         <div className="mt-8 rounded-xl border bg-white shadow-sm">
-
           <div className="flex items-center justify-between border-b px-6 py-5">
             <div>
               <h2 className="text-lg font-semibold">
@@ -208,7 +360,6 @@ function StaffDashboard() {
             </div>
           ) : (
             <div className="divide-y">
-
               {recentComplaints.map(
                 (complaint) => (
                   <button
@@ -221,7 +372,6 @@ function StaffDashboard() {
                     }
                     className="flex w-full items-center justify-between px-6 py-5 text-left hover:bg-gray-50"
                   >
-
                     <div>
                       <p className="text-sm font-semibold">
                         {complaint.title}
@@ -245,16 +395,12 @@ function StaffDashboard() {
                         ).toLocaleDateString()}
                       </p>
                     </div>
-
                   </button>
                 )
               )}
-
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ import complaintRoutes from './routes/complaintRoutes.js'
 import departmentRoutes from './routes/departmentRoutes.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import userRoutes from './routes/userRoutes.js'
+import notificationRoutes from './routes/notificationRoutes.js'
 
 dotenv.config()
 
@@ -36,6 +37,11 @@ message:
 app.use(
 '/api/complaints',
 complaintRoutes
+)
+
+app.use(
+  '/api/notifications',
+  notificationRoutes
 )
 
 app.use(

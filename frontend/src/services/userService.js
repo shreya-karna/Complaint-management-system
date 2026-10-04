@@ -44,3 +44,13 @@ export const loginUser = async (
 
   return response.data
 }
+
+export const getStaffByDepartment = async (
+  departmentId
+) => {
+  const response = await api.get(
+    `/users/department/${departmentId}/staff`
+  )
+
+  return response.data
+}

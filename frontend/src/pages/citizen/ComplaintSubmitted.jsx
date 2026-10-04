@@ -211,8 +211,18 @@ CITIZEN SERVICES </p>
               </p>
 
               <p className="mt-1 font-medium text-slate-900">
-                {complaint.location}
-              </p>
+  {complaint.location
+    ? [
+        complaint.location.province,
+        complaint.location.district,
+        complaint.location.municipality,
+        `Ward ${complaint.location.ward}`,
+        complaint.location.tole,
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : 'N/A'}
+</p>
             </div>
           </div>
 

@@ -41,9 +41,23 @@ export const createComplaint = async ({
   return response.data
 }
 
-export const getComplaints = async () => {
+export const getComplaints = async (
+  assignedToMe = false,
+  filters = {}
+) => {
+  const params = {
+    ...filters,
+  }
+
+  if (assignedToMe) {
+    params.assignedToMe = 'true'
+  }
+
   const response = await api.get(
-    '/complaints'
+    '/complaints',
+    {
+      params,
+    }
   )
 
   return response.data
@@ -82,3 +96,43 @@ export const assignComplaint = async (
 
   return response.data
 }
+
+export const reopenComplaint = async (
+  id,
+  reason
+) => {
+  const response = await api.patch(
+    `/complaints/${id}/reopen`,
+    {
+      reason,
+    }
+  )
+
+  return response.data
+}
+
+export const trackComplaint =
+  async (complaintNumber) => {
+    const response = await api.get(
+      '/complaints/track',
+      {
+        params: {
+          complaintNumber,
+        },
+      }
+    )
+
+    return response.data
+  }
+
+  export const getPublicComplaints =
+  async (filters = {}) => {
+    const response = await api.get(
+      '/complaints/public',
+      {
+        params: filters,
+      }
+    )
+
+    return response.data
+  }

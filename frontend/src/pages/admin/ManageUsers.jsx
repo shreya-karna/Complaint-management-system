@@ -269,7 +269,9 @@ function ManageUsers() {
         role: formData.role,
 
         departmentId:
-          formData.departmentId || null,
+  formData.role === 'CITIZEN'
+    ? null
+    : formData.departmentId || null,
       }
 
       if (formData.password) {

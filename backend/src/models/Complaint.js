@@ -14,10 +14,11 @@ const complaintSchema = new mongoose.Schema(
       required: false,
     },
 
-    departmentId: {
-      type: String,
-      required: true,
-    },
+departmentId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Department',
+  required: true,
+},
 
     departmentName: {
       type: String,
