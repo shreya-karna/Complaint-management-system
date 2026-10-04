@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import ReCAPTCHA from 'react-google-recaptcha'
 
 import {
   loginUser,
@@ -12,6 +13,8 @@ function Login() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  const [captchaToken, setCaptchaToken] = useState(null)
 
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -41,12 +44,18 @@ function Login() {
       return
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA.')
+      return
+    }
+
     setLoading(true)
 
     try {
       const response = await loginUser(
         email.trim(),
-        password
+        password,
+        captchaToken
       )
 
       const user = response.user
@@ -204,6 +213,23 @@ function Login() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="flex justify-center">
+              <ReCAPTCHA
+                sitekey={
+                  import.meta.env.VITE_RECAPTCHA_SITE_KEY
+                }
+                onChange={(token) =>
+                  setCaptchaToken(token)
+                }
+                onExpired={() =>
+                  setCaptchaToken(null)
+                }
+                onErrored={() =>
+                  setCaptchaToken(null)
+                }
+              />
             </div>
 
             <button

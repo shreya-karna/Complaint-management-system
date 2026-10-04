@@ -15,10 +15,15 @@ export const updateUser = async (id, userData) => {
   return response.data
 }
 
-export const loginUser = async (email, password) => {
+export const loginUser = async (
+  email,
+  password,
+  captchaToken
+) => {
   const response = await api.post('/users/login', {
     email,
     password,
+    captchaToken,
   })
 
   return response.data

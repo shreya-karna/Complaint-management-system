@@ -6,6 +6,41 @@ import User from '../models/User.js'
 import Department from '../models/Department.js'
 import { sendVerificationEmail } from '../utils/emailService.js'
 
+const verifyRecaptcha = async (captchaToken) => {
+  if (!captchaToken) {
+    return false
+  }
+
+  try {
+    const response = await fetch(
+      'https://www.google.com/recaptcha/api/siteverify',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':
+            'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          secret:
+            process.env.RECAPTCHA_SECRET_KEY,
+          response: captchaToken,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    return data.success === true
+  } catch (error) {
+    console.error(
+      'reCAPTCHA verification error:',
+      error
+    )
+
+    return false
+  }
+}
+
 export const getUsers = async (req, res) => {
   try {
     const users = await User.find()
@@ -85,11 +120,9 @@ export const createUser = async (req, res) => {
       departmentName = department.name
     }
 
-    // Create email verification token
     const emailVerificationToken =
       crypto.randomBytes(32).toString('hex')
 
-    // Verification link expires after 24 hours
     const emailVerificationExpires = new Date(
       Date.now() + 24 * 60 * 60 * 1000
     )
@@ -114,7 +147,6 @@ export const createUser = async (req, res) => {
 
       email: email.toLowerCase().trim(),
 
-      // Email verification fields
       isEmailVerified: false,
       emailVerificationToken,
       emailVerificationExpires,
@@ -177,11 +209,9 @@ export const createUser = async (req, res) => {
       departmentName,
     })
 
-    // Create verification URL
     const verificationUrl =
       `${process.env.FRONTEND_URL}/verify-email/${emailVerificationToken}`
 
-    // Send verification email
     await sendVerificationEmail(
       user.email,
       verificationUrl
@@ -209,7 +239,6 @@ export const createUser = async (req, res) => {
   }
 }
 
-// Verify email address
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params
@@ -460,12 +489,35 @@ export const updateUser = async (req, res) => {
 // Login user
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const {
+      email,
+      password,
+      captchaToken,
+    } = req.body
 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Email and password are required.',
+      })
+    }
+
+    // Verify CAPTCHA before allowing login
+    if (!captchaToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please complete the CAPTCHA.',
+      })
+    }
+
+    const isCaptchaValid =
+      await verifyRecaptcha(captchaToken)
+
+    if (!isCaptchaValid) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'CAPTCHA verification failed. Please try again.',
       })
     }
 
