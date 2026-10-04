@@ -26,10 +26,10 @@ departmentId: {
     },
 
     assignedTo: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'User',
-  default: null,
-},
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
 
     category: {
       type: String,
@@ -151,9 +151,46 @@ departmentId: {
         },
       },
     ],
+
+    // ===== AI & MAP FIELDS (added for AI/Maps integration) =====
+    coordinates: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
+
+    aiSummary: {
+      type: String,
+      default: '',
+    },
+
+    aiConfidence: {
+      type: Number,
+      default: null,
+    },
+
+    needsReview: {
+      type: Boolean,
+      default: false,
+    },
+
+    duplicateOf: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Complaint',
+      default: null,
+    },
+
+    upvoteCount: {
+      type: Number,
+      default: 0,
+    },
+    // ===== END AI & MAP FIELDS =====
   },
   {
     timestamps: true,
+  }
+)
+{
+  timestamps: true,
   }
 )
 
