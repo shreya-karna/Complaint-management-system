@@ -22,7 +22,7 @@ export default function ComplaintsMap({ complaints = [] }) {
   const center = [items[0].coordinates.lat, items[0].coordinates.lng];
 
   return (
-    <div className="h-[500px] overflow-hidden rounded-xl border">
+    <div className="h-125 overflow-hidden rounded-xl border">
       <MapContainer
         center={center}
         zoom={13}
