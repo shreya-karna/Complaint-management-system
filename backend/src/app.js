@@ -8,35 +8,38 @@ import departmentRoutes from './routes/departmentRoutes.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
+import aiRoutes from './routes/aiRoutes.js'
 
 dotenv.config()
 
 const app = express()
 
 app.use(
-cors({
-origin: process.env.FRONTEND_URL,
-})
+  cors({
+    origin: process.env.FRONTEND_URL,
+  })
 )
+
+app.use('/api/ai', aiRoutes)
 
 app.use(express.json())
 
 app.use(
-'/uploads',
-express.static('uploads')
+  '/uploads',
+  express.static('uploads')
 )
 
 app.get('/api/health', (req, res) => {
-res.json({
-success: true,
-message:
-'Complaint Management API is running.',
-})
+  res.json({
+    success: true,
+    message:
+      'Complaint Management API is running.',
+  })
 })
 
 app.use(
-'/api/complaints',
-complaintRoutes
+  '/api/complaints',
+  complaintRoutes
 )
 
 app.use(
@@ -59,13 +62,13 @@ app.use('/api/users', userRoutes)
 const PORT = process.env.PORT || 5000
 
 const startServer = async () => {
-await connectDatabase()
+  await connectDatabase()
 
-app.listen(PORT, () => {
-console.log(
-`Server running on http://localhost:${PORT}`
-)
-})
+  app.listen(PORT, () => {
+    console.log(
+      `Server running on http://localhost:${PORT}`
+    )
+  })
 }
 
 startServer()

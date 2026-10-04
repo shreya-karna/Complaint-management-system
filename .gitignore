@@ -3,3 +3,6 @@ ai-service/venv/
 ai-service/.env
 __pycache__/
 *.pyc
+# Environment variables
+backend/.env
+frontend/.env

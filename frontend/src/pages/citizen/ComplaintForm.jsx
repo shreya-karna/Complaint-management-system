@@ -1,8 +1,5 @@
-import { useEffect, useState } from 'react'
-import {
-  useLocation,
-  useNavigate,
-} from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   ArrowLeft,
@@ -10,60 +7,56 @@ import {
   Image as ImageIcon,
   Upload,
   X,
-} from 'lucide-react'
+} from "lucide-react";
 
-import { createComplaint } from '@/services/complaintService'
-import { getCategories } from '@/services/categoryService'
+import { createComplaint } from "@/services/complaintService";
+import { getCategories } from "@/services/categoryService";
+import LocationPicker from "@/components/LocationPicker";
+import { suggestCategory } from "@/services/aiServices";
 
-import provinces from '@/data/provinces.json'
-import districts from '@/data/districts.json'
-import localLevels from '@/data/localLevels.json'
+import provinces from "@/data/provinces.json";
+import districts from "@/data/districts.json";
+import localLevels from "@/data/localLevels.json";
 
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 function ComplaintForm() {
-  const location = useLocation()
-  const navigate = useNavigate()
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const department = location.state?.department
+  const department = location.state?.department;
 
   const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    description: '',
-    province: '',
-    district: '',
-    municipality: '',
-    ward: '',
-    tole: '',
-  })
+    title: "",
+    category: "",
+    description: "",
+    province: "",
+    district: "",
+    municipality: "",
+    ward: "",
+    tole: "",
+  });
 
-  const [files, setFiles] = useState([])
+  const [suggestion, setSuggestion] = useState(null);
 
-  const [categories, setCategories] = useState([])
+  const [files, setFiles] = useState([]);
 
-  const [categoriesLoading, setCategoriesLoading] =
-    useState(true)
+  const [categories, setCategories] = useState([]);
 
-  const [categoriesError, setCategoriesError] =
-    useState('')
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  const [errors, setErrors] = useState({})
+  const [categoriesError, setCategoriesError] = useState("");
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false)
+  const [errors, setErrors] = useState({});
 
-  const [availableDistricts, setAvailableDistricts] =
-    useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [availableMunicipalities, setAvailableMunicipalities] =
-    useState([])
+  const [loc, setLoc] = useState(null);
+
+  const [availableDistricts, setAvailableDistricts] = useState([]);
+
+  const [availableMunicipalities, setAvailableMunicipalities] = useState([]);
 
   // Ward numbers available in the dropdown.
   // localLevels.json does not contain ward data.
@@ -79,42 +72,33 @@ function ComplaintForm() {
   useEffect(() => {
     const loadCategories = async () => {
       if (!department?.id) {
-        setCategories([])
-        setCategoriesLoading(false)
-        return
+        setCategories([]);
+        setCategoriesLoading(false);
+        return;
       }
 
       try {
-        setCategoriesLoading(true)
-        setCategoriesError('')
+        setCategoriesLoading(true);
+        setCategoriesError("");
 
-        const response =
-          await getCategories(department.id)
+        const response = await getCategories(department.id);
 
-        const activeCategories = (
-          response.categories || []
-        ).filter(
-          (category) =>
-            category.isActive === true
-        )
+        const activeCategories = (response.categories || []).filter(
+          (category) => category.isActive === true,
+        );
 
-        setCategories(activeCategories)
+        setCategories(activeCategories);
       } catch (error) {
-        console.error(
-          'Failed to load categories:',
-          error
-        )
+        console.error("Failed to load categories:", error);
 
-        setCategoriesError(
-          'Failed to load categories. Please try again.'
-        )
+        setCategoriesError("Failed to load categories. Please try again.");
       } finally {
-        setCategoriesLoading(false)
+        setCategoriesLoading(false);
       }
-    }
+    };
 
-    loadCategories()
-  }, [department?.id])
+    loadCategories();
+  }, [department?.id]);
 
   // --------------------------------------------------
   // Province -> District
@@ -122,19 +106,16 @@ function ComplaintForm() {
 
   useEffect(() => {
     if (!formData.province) {
-      setAvailableDistricts([])
-      return
+      setAvailableDistricts([]);
+      return;
     }
 
-    const filteredDistricts =
-      districts.filter(
-        (district) =>
-          district.province_code ===
-          formData.province
-      )
+    const filteredDistricts = districts.filter(
+      (district) => district.province_code === formData.province,
+    );
 
-    setAvailableDistricts(filteredDistricts)
-  }, [formData.province])
+    setAvailableDistricts(filteredDistricts);
+  }, [formData.province]);
 
   // --------------------------------------------------
   // District -> Municipality
@@ -142,347 +123,301 @@ function ComplaintForm() {
 
   useEffect(() => {
     if (!formData.district) {
-      setAvailableMunicipalities([])
-      return
+      setAvailableMunicipalities([]);
+      return;
     }
 
-    const filteredMunicipalities =
-      localLevels.filter(
-        (localLevel) =>
-          localLevel.district_code ===
-          formData.district
-      )
+    const filteredMunicipalities = localLevels.filter(
+      (localLevel) => localLevel.district_code === formData.district,
+    );
 
-    setAvailableMunicipalities(
-      filteredMunicipalities
-    )
-  }, [formData.district])
+    setAvailableMunicipalities(filteredMunicipalities);
+  }, [formData.district]);
+
+  const handleDescriptionBlur = async () => {
+    if (formData.description.trim().length < 15 || !department?.id) return;
+
+    try {
+      const result = await suggestCategory({
+        departmentId: department.id,
+        text: formData.description,
+      });
+
+      console.log("AI result:", result);
+
+      if (result?.category && !result.needs_review) {
+        setSuggestion(result);
+      }
+    } catch (error) {
+      console.error("AI suggestion failed:", error);
+    }
+  };
 
   // --------------------------------------------------
   // Province change
   // --------------------------------------------------
 
   const handleProvinceChange = (event) => {
-    const provinceCode =
-      event.target.value
+    const provinceCode = event.target.value;
 
     setFormData((previous) => ({
       ...previous,
       province: provinceCode,
-      district: '',
-      municipality: '',
-      ward: '',
-    }))
+      district: "",
+      municipality: "",
+      ward: "",
+    }));
 
     setErrors((previous) => ({
       ...previous,
-      province: '',
-      district: '',
-      municipality: '',
-      ward: '',
-    }))
+      province: "",
+      district: "",
+      municipality: "",
+      ward: "",
+    }));
 
-    setAvailableMunicipalities([])
-  }
+    setAvailableMunicipalities([]);
+  };
 
   // --------------------------------------------------
   // District change
   // --------------------------------------------------
 
   const handleDistrictChange = (event) => {
-    const districtCode =
-      event.target.value
+    const districtCode = event.target.value;
 
     setFormData((previous) => ({
       ...previous,
       district: districtCode,
-      municipality: '',
-      ward: '',
-    }))
+      municipality: "",
+      ward: "",
+    }));
 
     setErrors((previous) => ({
       ...previous,
-      district: '',
-      municipality: '',
-      ward: '',
-    }))
-  }
+      district: "",
+      municipality: "",
+      ward: "",
+    }));
+  };
 
   // --------------------------------------------------
   // Municipality change
   // --------------------------------------------------
 
-  const handleMunicipalityChange = (
-    event
-  ) => {
-    const municipalityName =
-      event.target.value
+  const handleMunicipalityChange = (event) => {
+    const municipalityName = event.target.value;
 
     setFormData((previous) => ({
       ...previous,
       municipality: municipalityName,
-      ward: '',
-    }))
+      ward: "",
+    }));
 
     setErrors((previous) => ({
       ...previous,
-      municipality: '',
-      ward: '',
-    }))
-  }
+      municipality: "",
+      ward: "",
+    }));
+  };
 
   // --------------------------------------------------
   // Normal input change
   // --------------------------------------------------
 
   const handleChange = (event) => {
-    const {
-      name,
-      value,
-    } = event.target
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
       [name]: value,
-    }))
+    }));
 
     setErrors((previous) => ({
       ...previous,
-      [name]: '',
-    }))
-  }
+      [name]: "",
+    }));
+  };
 
   // --------------------------------------------------
   // File handling
   // --------------------------------------------------
 
   const handleFileChange = (event) => {
-    const selectedFiles = Array.from(
-      event.target.files || []
-    )
+    const selectedFiles = Array.from(event.target.files || []);
 
-    const validFiles = []
+    const validFiles = [];
 
     for (const file of selectedFiles) {
-      if (
-        file.size >
-        10 * 1024 * 1024
-      ) {
+      if (file.size > 10 * 1024 * 1024) {
         setErrors((previous) => ({
           ...previous,
           files: `${file.name} is larger than 10MB.`,
-        }))
+        }));
 
-        continue
+        continue;
       }
 
       const allowedTypes = [
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-        'image/gif',
-        'application/pdf',
-      ]
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf",
+      ];
 
-      if (
-        !allowedTypes.includes(
-          file.type
-        )
-      ) {
+      if (!allowedTypes.includes(file.type)) {
         setErrors((previous) => ({
           ...previous,
           files: `${file.name} is not a supported file type.`,
-        }))
+        }));
 
-        continue
+        continue;
       }
 
-      validFiles.push(file)
+      validFiles.push(file);
     }
 
-    setFiles((previous) => [
-      ...previous,
-      ...validFiles,
-    ])
+    setFiles((previous) => [...previous, ...validFiles]);
 
     if (validFiles.length > 0) {
       setErrors((previous) => ({
         ...previous,
-        files: '',
-      }))
+        files: "",
+      }));
     }
 
-    event.target.value = ''
-  }
+    event.target.value = "";
+  };
 
   const removeFile = (index) => {
     setFiles((previous) =>
-      previous.filter(
-        (_, fileIndex) =>
-          fileIndex !== index
-      )
-    )
-  }
+      previous.filter((_, fileIndex) => fileIndex !== index),
+    );
+  };
 
   // --------------------------------------------------
   // Validation
   // --------------------------------------------------
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title =
-        'Complaint title is required.'
+      newErrors.title = "Complaint title is required.";
     }
 
     if (!formData.category) {
-      newErrors.category =
-        'Please select a category.'
+      newErrors.category = "Please select a category.";
     }
 
-    if (
-      !formData.description.trim()
-    ) {
-      newErrors.description =
-        'Complaint description is required.'
+    if (!formData.description.trim()) {
+      newErrors.description = "Complaint description is required.";
     }
 
     if (!formData.province) {
-      newErrors.province =
-        'Province is required.'
+      newErrors.province = "Province is required.";
     }
 
     if (!formData.district) {
-      newErrors.district =
-        'District is required.'
+      newErrors.district = "District is required.";
     }
 
     if (!formData.municipality) {
-      newErrors.municipality =
-        'Municipality is required.'
+      newErrors.municipality = "Municipality is required.";
     }
 
     if (!formData.ward) {
-      newErrors.ward =
-        'Ward is required.'
+      newErrors.ward = "Ward is required.";
     }
 
-    setErrors(newErrors)
+    setErrors(newErrors);
 
-    return (
-      Object.keys(newErrors).length === 0
-    )
-  }
+    return Object.keys(newErrors).length === 0;
+  };
 
   // --------------------------------------------------
   // Submit complaint
   // --------------------------------------------------
 
-  const handleSubmit = async (
-    event
-  ) => {
-    event.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     setErrors((previous) => ({
       ...previous,
-      submit: '',
-    }))
+      submit: "",
+    }));
 
     try {
       // Convert selected codes/names into
       // the actual English names before sending.
 
-      const selectedProvince =
-        provinces.find(
-          (province) =>
-            province.code ===
-            formData.province
-        )
+      const selectedProvince = provinces.find(
+        (province) => province.code === formData.province,
+      );
 
-      const selectedDistrict =
-        districts.find(
-          (district) =>
-            district.code ===
-            formData.district
-        )
+      const selectedDistrict = districts.find(
+        (district) => district.code === formData.district,
+      );
 
-      const selectedMunicipality =
-        localLevels.find(
-          (municipality) =>
-            municipality.district_code ===
-              formData.district &&
-            municipality.name_en ===
-              formData.municipality
-        )
+      const selectedMunicipality = localLevels.find(
+        (municipality) =>
+          municipality.district_code === formData.district &&
+          municipality.name_en === formData.municipality,
+      );
 
-      const result =
-        await createComplaint({
-          department,
+      const result = await createComplaint({
+        department,
 
-          title: formData.title,
+        title: formData.title,
 
-          category:
-            formData.category,
+        category: formData.category,
 
-          description:
-            formData.description,
+        description: formData.description,
 
-          province:
-            selectedProvince?.name_en ||
-            '',
+        province: selectedProvince?.name_en || "",
 
-          district:
-            selectedDistrict?.name_en ||
-            '',
+        district: selectedDistrict?.name_en || "",
 
-          municipality:
-            selectedMunicipality?.name_en ||
-            '',
+        municipality: selectedMunicipality?.name_en || "",
 
-          ward:
-            formData.ward,
+        ward: formData.ward,
 
-          tole:
-            formData.tole,
+        tole: formData.tole,
 
-          files,
-        })
+        lat: loc?.lat,
+        lng: loc?.lng,
+        address: loc?.address,
 
-      navigate(
-        '/complaint-submitted',
-        {
-          state: {
-            complaint:
-              result.complaint,
-          },
-        }
-      )
+        files,
+      });
+
+      navigate("/complaint-submitted", {
+        state: {
+          complaint: result.complaint,
+        },
+      });
     } catch (error) {
-      console.error(
-        'Complaint submission failed:',
-        error
-      )
+      console.error("Complaint submission failed:", error);
 
       setErrors((previous) => ({
         ...previous,
 
         submit:
-          error.response?.data
-            ?.message ||
+          error.response?.data?.message ||
           error.message ||
-          'Failed to submit complaint. Please try again.',
-      }))
+          "Failed to submit complaint. Please try again.",
+      }));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // --------------------------------------------------
   // Department missing
@@ -499,17 +434,12 @@ function ComplaintForm() {
               </h2>
 
               <p className="mt-2 text-slate-500">
-                Please select a department before
-                submitting a complaint.
+                Please select a department before submitting a complaint.
               </p>
 
               <Button
                 className="mt-6"
-                onClick={() =>
-                  navigate(
-                    '/select-department'
-                  )
-                }
+                onClick={() => navigate("/select-department")}
               >
                 Select Department
               </Button>
@@ -517,12 +447,11 @@ function ComplaintForm() {
           </Card>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-
       {/* Header */}
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center px-6 py-4">
@@ -539,15 +468,10 @@ function ComplaintForm() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-10">
-
         {/* Back */}
         <button
           type="button"
-          onClick={() =>
-            navigate(
-              '/select-department'
-            )
-          }
+          onClick={() => navigate("/select-department")}
           className="mb-6 flex items-center text-sm text-slate-500 hover:text-slate-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -555,14 +479,11 @@ function ComplaintForm() {
         </button>
 
         <Card>
-
           <CardHeader>
-            <CardTitle className="text-2xl">
-              Submit a Complaint
-            </CardTitle>
+            <CardTitle className="text-2xl">Submit a Complaint</CardTitle>
 
             <p className="text-sm text-slate-500">
-              Department:{' '}
+              Department:{" "}
               <span className="font-medium text-slate-700">
                 {department.name}
               </span>
@@ -570,12 +491,7 @@ function ComplaintForm() {
           </CardHeader>
 
           <CardContent>
-
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
-
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* -------------------------------- */}
               {/* Title */}
               {/* -------------------------------- */}
@@ -598,9 +514,7 @@ function ComplaintForm() {
                 />
 
                 {errors.title && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.title}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{errors.title}</p>
                 )}
               </div>
 
@@ -619,52 +533,55 @@ function ComplaintForm() {
                 <select
                   id="category"
                   name="category"
-                  value={
-                    formData.category
-                  }
+                  value={formData.category}
                   onChange={handleChange}
-                  disabled={
-                    categoriesLoading ||
-                    !!categoriesError
-                  }
+                  disabled={categoriesLoading || !!categoriesError}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">
                     {categoriesLoading
-                      ? 'Loading categories...'
-                      : 'Select category'}
+                      ? "Loading categories..."
+                      : "Select category"}
                   </option>
 
-                  {categories.map(
-                    (category) => (
-                      <option
-                        key={category._id}
-                        value={category.name}
-                      >
-                        {category.name}
-                      </option>
-                    )
-                  )}
+                  {categories.map((category) => (
+                    <option key={category._id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
 
                 {categoriesError && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {categoriesError}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{categoriesError}</p>
                 )}
 
                 {!categoriesLoading &&
                   !categoriesError &&
-                  categories.length ===
-                    0 && (
+                  categories.length === 0 && (
                     <p className="mt-1 text-sm text-slate-500">
                       No categories are currently available for this department.
                     </p>
                   )}
 
                 {errors.category && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.category}
+                  <p className="mt-1 text-sm text-red-600">{errors.category}</p>
+                )}
+                {suggestion && formData.category !== suggestion.category && (
+                  <p className="mt-1 text-sm text-blue-600">
+                    AI suggests: <b>{suggestion.category}</b>{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => {
+                        setFormData((previous) => ({
+                          ...previous,
+                          category: suggestion.category,
+                        }));
+                        setSuggestion(null);
+                      }}
+                    >
+                      Apply
+                    </button>
                   </p>
                 )}
               </div>
@@ -684,10 +601,9 @@ function ComplaintForm() {
                 <textarea
                   id="description"
                   name="description"
-                  value={
-                    formData.description
-                  }
+                  value={formData.description}
                   onChange={handleChange}
+                  onBlur={handleDescriptionBlur}
                   rows={6}
                   placeholder="Describe the issue in detail"
                   className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -705,7 +621,6 @@ function ComplaintForm() {
               {/* -------------------------------- */}
 
               <div className="space-y-4">
-
                 <h3 className="text-base font-semibold text-slate-900">
                   Complaint Location
                 </h3>
@@ -723,28 +638,17 @@ function ComplaintForm() {
                   <select
                     id="province"
                     name="province"
-                    value={
-                      formData.province
-                    }
-                    onChange={
-                      handleProvinceChange
-                    }
+                    value={formData.province}
+                    onChange={handleProvinceChange}
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="">
-                      Select province
-                    </option>
+                    <option value="">Select province</option>
 
-                    {provinces.map(
-                      (province) => (
-                        <option
-                          key={province.code}
-                          value={province.code}
-                        >
-                          {province.name_en}
-                        </option>
-                      )
-                    )}
+                    {provinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name_en}
+                      </option>
+                    ))}
                   </select>
 
                   {errors.province && (
@@ -767,35 +671,25 @@ function ComplaintForm() {
                   <select
                     id="district"
                     name="district"
-                    value={
-                      formData.district
-                    }
-                    onChange={
-                      handleDistrictChange
-                    }
-                    disabled={
-                      !formData.province
-                    }
+                    value={formData.district}
+                    onChange={handleDistrictChange}
+                    disabled={!formData.province}
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="">
                       {!formData.province
-                        ? 'Select province first'
-                        : 'Select district'}
+                        ? "Select province first"
+                        : "Select district"}
                     </option>
 
-                    {availableDistricts.map(
-                      (district) => (
-                        <option
-                          key={`${district.province_code}-${district.code}`}
-                          value={
-                            district.code
-                          }
-                        >
-                          {district.name_en}
-                        </option>
-                      )
-                    )}
+                    {availableDistricts.map((district) => (
+                      <option
+                        key={`${district.province_code}-${district.code}`}
+                        value={district.code}
+                      >
+                        {district.name_en}
+                      </option>
+                    ))}
                   </select>
 
                   {errors.district && (
@@ -818,35 +712,25 @@ function ComplaintForm() {
                   <select
                     id="municipality"
                     name="municipality"
-                    value={
-                      formData.municipality
-                    }
-                    onChange={
-                      handleMunicipalityChange
-                    }
-                    disabled={
-                      !formData.district
-                    }
+                    value={formData.municipality}
+                    onChange={handleMunicipalityChange}
+                    disabled={!formData.district}
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="">
                       {!formData.district
-                        ? 'Select district first'
-                        : 'Select municipality'}
+                        ? "Select district first"
+                        : "Select municipality"}
                     </option>
 
-                    {availableMunicipalities.map(
-                      (municipality, index) => (
-                        <option
-                          key={`${municipality.district_code}-${municipality.name_en}-${index}`}
-                          value={
-                            municipality.name_en
-                          }
-                        >
-                          {municipality.name_en}
-                        </option>
-                      )
-                    )}
+                    {availableMunicipalities.map((municipality, index) => (
+                      <option
+                        key={`${municipality.district_code}-${municipality.name_en}-${index}`}
+                        value={municipality.name_en}
+                      >
+                        {municipality.name_en}
+                      </option>
+                    ))}
                   </select>
 
                   {errors.municipality && (
@@ -858,33 +742,31 @@ function ComplaintForm() {
 
                 {/* Ward */}
 
-<div>
-  <label
-    htmlFor="ward"
-    className="mb-2 block text-sm font-medium text-slate-700"
-  >
-    Ward Number
-  </label>
+                <div>
+                  <label
+                    htmlFor="ward"
+                    className="mb-2 block text-sm font-medium text-slate-700"
+                  >
+                    Ward Number
+                  </label>
 
-  <input
-    id="ward"
-    name="ward"
-    type="number"
-    min="1"
-    max="35"
-    value={formData.ward}
-    onChange={handleChange}
-    disabled={!formData.municipality}
-    placeholder="Enter ward number"
-    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-  />
+                  <input
+                    id="ward"
+                    name="ward"
+                    type="number"
+                    min="1"
+                    max="35"
+                    value={formData.ward}
+                    onChange={handleChange}
+                    disabled={!formData.municipality}
+                    placeholder="Enter ward number"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
 
-  {errors.ward && (
-    <p className="mt-1 text-sm text-red-600">
-      {errors.ward}
-    </p>
-  )}
-</div>
+                  {errors.ward && (
+                    <p className="mt-1 text-sm text-red-600">{errors.ward}</p>
+                  )}
+                </div>
 
                 {/* Tole */}
 
@@ -908,15 +790,26 @@ function ComplaintForm() {
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
-
               </div>
 
               {/* -------------------------------- */}
+
+              {/* Map pin */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Pin exact location on map
+                  <span className="ml-1 text-xs font-normal text-slate-400">
+                    (Recommended)
+                  </span>
+                </label>
+
+                <LocationPicker value={loc} onChange={setLoc} />
+              </div>
+
               {/* Attachments */}
               {/* -------------------------------- */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Attachments
                 </label>
@@ -932,8 +825,7 @@ function ComplaintForm() {
                   </p>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    JPG, PNG, WEBP, GIF or PDF
-                    · Maximum 10MB per file
+                    JPG, PNG, WEBP, GIF or PDF · Maximum 10MB per file
                   </p>
 
                   <input
@@ -941,152 +833,102 @@ function ComplaintForm() {
                     type="file"
                     multiple
                     accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-                    onChange={
-                      handleFileChange
-                    }
+                    onChange={handleFileChange}
                     className="hidden"
                   />
                 </label>
 
                 {errors.files && (
-                  <p className="mt-2 text-sm text-red-600">
-                    {errors.files}
-                  </p>
+                  <p className="mt-2 text-sm text-red-600">{errors.files}</p>
                 )}
 
                 {files.length > 0 && (
                   <div className="mt-5 space-y-4">
-
                     <p className="text-sm font-semibold text-slate-700">
                       Attachment Preview
                     </p>
 
-                    {files.map(
-                      (file, index) => {
-                        const previewUrl =
-                          URL.createObjectURL(
-                            file
-                          )
+                    {files.map((file, index) => {
+                      const previewUrl = URL.createObjectURL(file);
 
-                        const isImage =
-                          file.type.startsWith(
-                            'image/'
-                          )
+                      const isImage = file.type.startsWith("image/");
 
-                        const isPdf =
-                          file.type ===
-                          'application/pdf'
+                      const isPdf = file.type === "application/pdf";
 
-                        return (
-                          <div
-                            key={`${file.name}-${index}`}
-                            className="overflow-hidden rounded-lg border bg-white"
-                          >
+                      return (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="overflow-hidden rounded-lg border bg-white"
+                        >
+                          {isImage && (
+                            <div className="flex max-h-80 items-center justify-center bg-slate-100 p-3">
+                              <img
+                                src={previewUrl}
+                                alt={file.name}
+                                className="max-h-72 max-w-full rounded-md object-contain"
+                              />
+                            </div>
+                          )}
 
-                            {isImage && (
-                              <div className="flex max-h-80 items-center justify-center bg-slate-100 p-3">
-                                <img
-                                  src={
-                                    previewUrl
-                                  }
-                                  alt={
-                                    file.name
-                                  }
-                                  className="max-h-72 max-w-full rounded-md object-contain"
-                                />
+                          {isPdf && (
+                            <div className="bg-slate-100 p-3">
+                              <iframe
+                                src={previewUrl}
+                                title={file.name}
+                                className="h-80 w-full rounded-md border bg-white"
+                              />
+                            </div>
+                          )}
+
+                          {!isImage && !isPdf && (
+                            <div className="flex items-center gap-3 bg-slate-50 p-5">
+                              <FileText className="h-10 w-10 text-slate-500" />
+
+                              <div>
+                                <p className="font-medium text-slate-900">
+                                  {file.name}
+                                </p>
+
+                                <p className="text-sm text-slate-500">
+                                  {file.type}
+                                </p>
                               </div>
-                            )}
+                            </div>
+                          )}
 
-                            {isPdf && (
-                              <div className="bg-slate-100 p-3">
-                                <iframe
-                                  src={
-                                    previewUrl
-                                  }
-                                  title={
-                                    file.name
-                                  }
-                                  className="h-80 w-full rounded-md border bg-white"
-                                />
-                              </div>
-                            )}
-
-                            {!isImage &&
-                              !isPdf && (
-                                <div className="flex items-center gap-3 bg-slate-50 p-5">
-                                  <FileText className="h-10 w-10 text-slate-500" />
-
-                                  <div>
-                                    <p className="font-medium text-slate-900">
-                                      {
-                                        file.name
-                                      }
-                                    </p>
-
-                                    <p className="text-sm text-slate-500">
-                                      {
-                                        file.type
-                                      }
-                                    </p>
-                                  </div>
-                                </div>
+                          <div className="flex items-center justify-between gap-4 border-t p-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                              {isImage ? (
+                                <ImageIcon className="h-5 w-5 shrink-0 text-blue-500" />
+                              ) : (
+                                <FileText className="h-5 w-5 shrink-0 text-slate-500" />
                               )}
 
-                            <div className="flex items-center justify-between gap-4 border-t p-4">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-slate-900">
+                                  {file.name}
+                                </p>
 
-                              <div className="flex min-w-0 items-center gap-3">
-
-                                {isImage ? (
-                                  <ImageIcon className="h-5 w-5 shrink-0 text-blue-500" />
-                                ) : (
-                                  <FileText className="h-5 w-5 shrink-0 text-slate-500" />
-                                )}
-
-                                <div className="min-w-0">
-
-                                  <p className="truncate text-sm font-medium text-slate-900">
-                                    {
-                                      file.name
-                                    }
-                                  </p>
-
-                                  <p className="text-xs text-slate-500">
-                                    {(
-                                      file.size /
-                                      1024
-                                    ).toFixed(
-                                      1
-                                    )}{' '}
-                                    KB
-                                  </p>
-
-                                </div>
-
+                                <p className="text-xs text-slate-500">
+                                  {(file.size / 1024).toFixed(1)} KB
+                                </p>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  removeFile(
-                                    index
-                                  )
-                                }
-                                className="shrink-0 rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                                title="Remove file"
-                              >
-                                <X className="h-5 w-5" />
-                              </button>
-
                             </div>
 
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="shrink-0 rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              title="Remove file"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
                           </div>
-                        )
-                      }
-                    )}
-
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-
               </div>
 
               {/* -------------------------------- */}
@@ -1104,26 +946,16 @@ function ComplaintForm() {
               {/* -------------------------------- */}
 
               <div className="flex justify-end border-t pt-6">
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting
-                    ? 'Submitting...'
-                    : 'Submit Complaint'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit Complaint"}
                 </Button>
-
               </div>
-
             </form>
-
           </CardContent>
         </Card>
-
       </main>
     </div>
-  )
+  );
 }
 
-export default ComplaintForm
+export default ComplaintForm;
