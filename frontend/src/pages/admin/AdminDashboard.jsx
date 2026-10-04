@@ -289,6 +289,16 @@ function AdminDashboard() {
             </button>
 
             <button
+  type="button"
+  onClick={() =>
+    navigate('/admin/users')
+  }
+  className="rounded-md border px-5 py-3 font-medium hover:bg-gray-50"
+>
+  Manage Users
+</button>
+
+            <button
               type="button"
               onClick={() =>
                 navigate('/admin/departments')
