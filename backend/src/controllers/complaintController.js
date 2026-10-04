@@ -1,5 +1,6 @@
 import Complaint from '../models/Complaint.js'
 import User from '../models/User.js'
+import Notification from '../models/Notification.js'
 
 const generateComplaintNumber = async () => {
   const year = new Date().getFullYear()
@@ -330,6 +331,132 @@ if (req.user.role === 'STAFF') {
   }
 }
 
+export const getPublicComplaints = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      province,
+      district,
+      municipality,
+      ward,
+      departmentId,
+      category,
+      status,
+      priority,
+    } = req.query
+
+    const filter = {}
+
+    if (province) {
+      filter['location.province'] = province
+    }
+
+    if (district) {
+      filter['location.district'] = district
+    }
+
+    if (municipality) {
+      filter['location.municipality'] =
+        municipality
+    }
+
+    if (ward) {
+      filter['location.ward'] = ward
+    }
+
+    if (departmentId) {
+      filter.departmentId = departmentId
+    }
+
+    if (category) {
+      filter.category = category
+    }
+
+    if (status) {
+      filter.status = status
+    }
+
+    if (priority) {
+      filter.priority = priority
+    }
+
+    const complaints =
+      await Complaint.find(filter)
+        .select(
+          'complaintNumber title category departmentId location status priority createdAt updatedAt'
+        )
+        .sort({ createdAt: -1 })
+
+    return res.status(200).json({
+      success: true,
+      complaints,
+    })
+  } catch (error) {
+    console.error(
+      'Get public complaints error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to fetch public complaints.',
+    })
+  }
+}
+
+export const trackComplaint = async (
+  req,
+  res
+) => {
+  try {
+    const { complaintNumber } =
+      req.query
+
+    if (!complaintNumber?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Complaint number is required.',
+      })
+    }
+
+    const complaint =
+      await Complaint.findOne({
+        complaintNumber:
+          complaintNumber.trim().toUpperCase(),
+      }).select(
+        'complaintNumber title departmentName category location status priority createdAt updatedAt history resolution'
+      )
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message:
+          'Complaint not found. Please check the complaint number.',
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      complaint,
+    })
+  } catch (error) {
+    console.error(
+      'Track complaint error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to track complaint.',
+    })
+  }
+}
+
 export const getComplaintById = async (req, res) => {
   try {
     const complaint = await Complaint.findById(
@@ -443,7 +570,8 @@ export const updateComplaint = async (req, res) => {
       })
     }
 
-    const complaint = await Complaint.findById(id)
+    const complaint =
+      await Complaint.findById(id)
 
     if (!complaint) {
       return res.status(404).json({
@@ -474,7 +602,8 @@ export const updateComplaint = async (req, res) => {
     complaint.priority = priority
 
     if (resolution !== undefined) {
-      complaint.resolution = resolution.trim()
+      complaint.resolution =
+        resolution.trim()
     }
 
     if (
@@ -492,6 +621,32 @@ export const updateComplaint = async (req, res) => {
     }
 
     await complaint.save()
+
+    // Create notification for the citizen
+    // only when the complaint status changes.
+    if (status !== previousStatus) {
+      let notificationTitle =
+        'Complaint Status Updated'
+
+      let notificationType =
+        'STATUS_UPDATED'
+
+      if (status === 'RESOLVED') {
+        notificationTitle =
+          'Complaint Resolved'
+
+        notificationType =
+          'COMPLAINT_RESOLVED'
+      }
+
+      await Notification.create({
+        userId: complaint.userId,
+        type: notificationType,
+        title: notificationTitle,
+        message: `Your complaint ${complaint.complaintNumber} is now ${status.replaceAll('_', ' ')}.`,
+        complaintId: complaint._id,
+      })
+    }
 
     return res.status(200).json({
       success: true,
@@ -623,14 +778,16 @@ export const assignComplaint = async (req, res) => {
     if (staff.role !== 'STAFF') {
       return res.status(400).json({
         success: false,
-        message: 'Selected user is not a staff member.',
+        message:
+          'Selected user is not a staff member.',
       })
     }
 
     if (!staff.isActive) {
       return res.status(400).json({
         success: false,
-        message: 'Selected staff member is inactive.',
+        message:
+          'Selected staff member is inactive.',
       })
     }
 
@@ -656,6 +813,15 @@ export const assignComplaint = async (req, res) => {
     })
 
     await complaint.save()
+
+    // Create notification for assigned staff
+    await Notification.create({
+      userId: staff._id,
+      type: 'COMPLAINT_ASSIGNED',
+      title: 'New Complaint Assigned',
+      message: `Complaint ${complaint.complaintNumber} has been assigned to you.`,
+      complaintId: complaint._id,
+    })
 
     return res.status(200).json({
       success: true,

@@ -7,6 +7,7 @@ function AdminDashboard() {
   const navigate = useNavigate()
 
   const [complaints, setComplaints] = useState([])
+  const [statistics, setStatistics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -21,8 +22,13 @@ function AdminDashboard() {
         setComplaints(
           response.complaints || []
         )
+
+        setStatistics(
+          response.statistics || null
+        )
       } catch (error) {
         console.error(error)
+
         setError(
           'Failed to load dashboard data.'
         )
@@ -34,33 +40,43 @@ function AdminDashboard() {
     fetchComplaints()
   }, [])
 
-  const getCount = (status) => {
-    return complaints.filter(
-      (complaint) =>
-        complaint.status === status
-    ).length
-  }
-
   const totalComplaints =
-    complaints.length
+    statistics?.total || 0
 
   const submittedCount =
-    getCount('SUBMITTED')
+    statistics?.submitted || 0
 
   const underReviewCount =
-    getCount('UNDER_REVIEW')
+    statistics?.underReview || 0
+
+  const assignedCount =
+    statistics?.assigned || 0
 
   const inProgressCount =
-    getCount('IN_PROGRESS')
+    statistics?.inProgress || 0
 
   const resolvedCount =
-    getCount('RESOLVED')
+    statistics?.resolved || 0
 
   const closedCount =
-    getCount('CLOSED')
+    statistics?.closed || 0
 
   const rejectedCount =
-    getCount('REJECTED')
+    statistics?.rejected || 0
+
+  const reopenedCount =
+    statistics?.reopened || 0
+
+  const goToComplaints = (status) => {
+    if (status) {
+      navigate(
+        `/admin/complaints?status=${status}`
+      )
+      return
+    }
+
+    navigate('/admin/complaints')
+  }
 
   if (loading) {
     return (
@@ -77,6 +93,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">
@@ -97,7 +114,15 @@ function AdminDashboard() {
 
         {/* Statistics */}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+
+          {/* Total */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints()
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Total Complaints
             </p>
@@ -105,9 +130,16 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {totalComplaints}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Submitted */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('SUBMITTED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Submitted
             </p>
@@ -115,9 +147,16 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {submittedCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Under Review */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('UNDER_REVIEW')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Under Review
             </p>
@@ -125,9 +164,33 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {underReviewCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Assigned */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('ASSIGNED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
+            <p className="text-sm text-gray-500">
+              Assigned
+            </p>
+
+            <p className="mt-2 text-3xl font-bold">
+              {assignedCount}
+            </p>
+          </button>
+
+          {/* In Progress */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('IN_PROGRESS')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               In Progress
             </p>
@@ -135,9 +198,16 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {inProgressCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Resolved */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('RESOLVED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Resolved
             </p>
@@ -145,9 +215,16 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {resolvedCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Closed */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('CLOSED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Closed
             </p>
@@ -155,9 +232,16 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {closedCount}
             </p>
-          </div>
+          </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
+          {/* Rejected */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('REJECTED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
             <p className="text-sm text-gray-500">
               Rejected
             </p>
@@ -165,7 +249,25 @@ function AdminDashboard() {
             <p className="mt-2 text-3xl font-bold">
               {rejectedCount}
             </p>
-          </div>
+          </button>
+
+          {/* Reopened */}
+          <button
+            type="button"
+            onClick={() =>
+              goToComplaints('REOPENED')
+            }
+            className="w-full rounded-lg bg-white p-6 text-left shadow-sm transition hover:shadow-md"
+          >
+            <p className="text-sm text-gray-500">
+              Reopened
+            </p>
+
+            <p className="mt-2 text-3xl font-bold">
+              {reopenedCount}
+            </p>
+          </button>
+
         </div>
 
         {/* Quick Actions */}
@@ -175,6 +277,7 @@ function AdminDashboard() {
           </h2>
 
           <div className="mt-5 flex flex-wrap gap-3">
+
             <button
               type="button"
               onClick={() =>
@@ -204,8 +307,10 @@ function AdminDashboard() {
             >
               Manage Categories
             </button>
+
           </div>
         </div>
+
       </div>
     </div>
   )

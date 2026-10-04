@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 
 import { getComplaints } from '../../services/complaintService'
 import { getDepartments } from '../../services/departmentService'
 
 function AdminComplaints() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [complaints, setComplaints] = useState([])
   const [departments, setDepartments] = useState([])
@@ -14,10 +18,14 @@ function AdminComplaints() {
   const [error, setError] = useState('')
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [priorityFilter, setPriorityFilter] =
+    useState('ALL')
   const [departmentFilter, setDepartmentFilter] =
     useState('ALL')
+
+  // Get status directly from the URL
+  const statusFilter =
+    searchParams.get('status') || 'ALL'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,21 +33,24 @@ function AdminComplaints() {
         setLoading(true)
         setError('')
 
-        const [complaintsResponse, departmentsResponse] =
-          await Promise.all([
-            getComplaints(),
-            getDepartments(),
-          ])
+        const [
+          complaintsResponse,
+          departmentsResponse,
+        ] = await Promise.all([
+          getComplaints(),
+          getDepartments(),
+        ])
 
         setComplaints(
-  complaintsResponse.complaints || []
-)
+          complaintsResponse.complaints || []
+        )
 
-setDepartments(
-  departmentsResponse.departments || []
-)
+        setDepartments(
+          departmentsResponse.departments || []
+        )
       } catch (error) {
         console.error(error)
+
         setError(
           'Failed to load complaints.'
         )
@@ -96,11 +107,23 @@ setDepartments(
       )
     })
 
+  const handleStatusChange = (status) => {
+    if (status === 'ALL') {
+      navigate('/admin/complaints')
+      return
+    }
+
+    navigate(
+      `/admin/complaints?status=${status}`
+    )
+  }
+
   const clearFilters = () => {
     setSearchTerm('')
-    setStatusFilter('ALL')
     setPriorityFilter('ALL')
     setDepartmentFilter('ALL')
+
+    navigate('/admin/complaints')
   }
 
   const formatDate = (date) => {
@@ -132,6 +155,7 @@ setDepartments(
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <div className="mb-8">
           <button
@@ -161,6 +185,7 @@ setDepartments(
         {/* Filters */}
         <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
           <div className="grid gap-4 md:grid-cols-4">
+
             {/* Search */}
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium">
@@ -189,7 +214,7 @@ setDepartments(
               <select
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(
+                  handleStatusChange(
                     event.target.value
                   )
                 }
@@ -302,7 +327,7 @@ setDepartments(
               </select>
             </div>
 
-            {/* Clear */}
+            {/* Clear Filters */}
             <div className="flex items-end">
               <button
                 type="button"
@@ -312,10 +337,11 @@ setDepartments(
                 Clear Filters
               </button>
             </div>
+
           </div>
         </div>
 
-        {/* Results count */}
+        {/* Results Count */}
         <div className="mb-4">
           <p className="text-sm text-gray-500">
             Showing{' '}
@@ -341,6 +367,7 @@ setDepartments(
           <div className="overflow-hidden rounded-lg bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
+
                 <thead className="border-b bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-sm font-semibold">
@@ -421,11 +448,13 @@ setDepartments(
                         <td className="px-6 py-4">
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() =>{
+                              console.log('VIEW COMPLAINT:', complaint)
+  console.log('COMPLAINT ID:', complaint._id)
                               navigate(
                                 `/admin/complaints/${complaint._id}`
                               )
-                            }
+                            }}
                             className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
                           >
                             View
@@ -435,10 +464,12 @@ setDepartments(
                     )
                   )}
                 </tbody>
+
               </table>
             </div>
           </div>
         )}
+
       </div>
     </div>
   )

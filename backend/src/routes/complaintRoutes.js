@@ -6,6 +6,8 @@ import {
   createComplaint,
   getComplaints,
   getComplaintById,
+  getPublicComplaints,
+  trackComplaint,
   assignComplaint,
   updateComplaint,
   reopenComplaint,
@@ -81,6 +83,19 @@ router.get(
   '/',
   authenticate,
   getComplaints
+)
+
+// Logged-in users - track complaint
+router.get(
+  '/track',
+  authenticate,
+  trackComplaint
+)
+
+router.get(
+  '/public',
+  authenticate,
+  getPublicComplaints
 )
 
 // Logged-in users - view one complaint
