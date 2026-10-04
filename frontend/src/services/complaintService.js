@@ -10,6 +10,9 @@ export const createComplaint = async ({
   municipality,
   ward,
   tole,
+  lat,
+  lng,
+  address,
   files,
 }) => {
   const formData = new FormData()
@@ -28,6 +31,15 @@ export const createComplaint = async ({
   formData.append('municipality', municipality)
   formData.append('ward', ward)
   formData.append('tole', tole || '')
+
+  formData.append('tole', tole || '')
+
+  if (lat != null && lng != null) {
+    formData.append('lat', lat)
+    formData.append('lng', lng)
+  }
+  formData.append('address', address || '')
+
 
   files.forEach((file) => {
     formData.append('attachments', file)
@@ -125,7 +137,7 @@ export const trackComplaint =
     return response.data
   }
 
-  export const getPublicComplaints =
+export const getPublicComplaints =
   async (filters = {}) => {
     const response = await api.get(
       '/complaints/public',
