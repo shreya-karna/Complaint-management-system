@@ -12,6 +12,7 @@ import {
 import { createComplaint } from "@/services/complaintService";
 import { getCategories } from "@/services/categoryService";
 import LocationPicker from "@/components/LocationPicker";
+import { suggestCategory } from "@/services/aiServices";
 
 import provinces from "@/data/provinces.json";
 import districts from "@/data/districts.json";
@@ -36,6 +37,8 @@ function ComplaintForm() {
     ward: "",
     tole: "",
   });
+
+  const [suggestion, setSuggestion] = useState(null);
 
   const [files, setFiles] = useState([]);
 
@@ -130,6 +133,25 @@ function ComplaintForm() {
 
     setAvailableMunicipalities(filteredMunicipalities);
   }, [formData.district]);
+
+  const handleDescriptionBlur = async () => {
+    if (formData.description.trim().length < 15 || !department?.id) return;
+
+    try {
+      const result = await suggestCategory({
+        departmentId: department.id,
+        text: formData.description,
+      });
+
+      console.log("AI result:", result);
+
+      if (result?.category && !result.needs_review) {
+        setSuggestion(result);
+      }
+    } catch (error) {
+      console.error("AI suggestion failed:", error);
+    }
+  };
 
   // --------------------------------------------------
   // Province change
@@ -544,6 +566,24 @@ function ComplaintForm() {
                 {errors.category && (
                   <p className="mt-1 text-sm text-red-600">{errors.category}</p>
                 )}
+                {suggestion && formData.category !== suggestion.category && (
+                  <p className="mt-1 text-sm text-blue-600">
+                    AI suggests: <b>{suggestion.category}</b>{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => {
+                        setFormData((previous) => ({
+                          ...previous,
+                          category: suggestion.category,
+                        }));
+                        setSuggestion(null);
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </p>
+                )}
               </div>
 
               {/* -------------------------------- */}
@@ -563,6 +603,7 @@ function ComplaintForm() {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
+                  onBlur={handleDescriptionBlur}
                   rows={6}
                   placeholder="Describe the issue in detail"
                   className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
