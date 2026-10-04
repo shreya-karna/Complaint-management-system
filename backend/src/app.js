@@ -8,6 +8,7 @@ import departmentRoutes from './routes/departmentRoutes.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
+import aiRoutes from './routes/aiRoutes.js'
 
 dotenv.config()
 
