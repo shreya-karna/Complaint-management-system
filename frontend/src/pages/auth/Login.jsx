@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 
-import { loginUser } from '../../services/userService'
+import {
+  loginUser,
+  resendVerificationEmail,
+} from '../../services/userService'
 
 function Login() {
   const navigate = useNavigate()
@@ -12,12 +15,21 @@ function Login() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const [showResend, setShowResend] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     setError('')
+    setSuccess('')
+    setResendMessage('')
+    setShowResend(false)
 
     if (!email.trim()) {
       setError('Please enter your email address.')
@@ -39,17 +51,15 @@ function Login() {
 
       const user = response.user
 
-      // Temporarily store the logged-in user.
-      // JWT authentication will be added next.
       localStorage.setItem(
-  'token',
-  response.token
-)
+        'token',
+        response.token
+      )
 
-localStorage.setItem(
-  'user',
-  JSON.stringify(user)
-)
+      localStorage.setItem(
+        'user',
+        JSON.stringify(user)
+      )
 
       if (user.role === 'ADMIN') {
         navigate('/admin')
@@ -64,8 +74,48 @@ localStorage.setItem(
         'Login failed. Please check your email and password.'
 
       setError(message)
+
+      if (
+        message.toLowerCase().includes('verify your email')
+      ) {
+        setShowResend(true)
+      }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setError('')
+    setSuccess('')
+    setResendMessage('')
+
+    if (!email.trim()) {
+      setResendMessage(
+        'Please enter your email address first.'
+      )
+      return
+    }
+
+    setResendLoading(true)
+
+    try {
+      const response =
+        await resendVerificationEmail(
+          email.trim()
+        )
+
+      setResendMessage(
+        response.message ||
+          'Verification email sent. Please check your email.'
+      )
+    } catch (err) {
+      setResendMessage(
+        err.response?.data?.message ||
+          'Failed to send verification email.'
+      )
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -89,6 +139,12 @@ localStorage.setItem(
             </div>
           )}
 
+          {success && (
+            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {success}
+            </div>
+          )}
+
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
@@ -104,6 +160,7 @@ localStorage.setItem(
                 onChange={(e) => {
                   setEmail(e.target.value)
                   setError('')
+                  setResendMessage('')
                 }}
                 placeholder="Enter your email"
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -159,6 +216,31 @@ localStorage.setItem(
                 : 'Login'}
             </button>
           </form>
+
+          {showResend && (
+            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm text-blue-800">
+                Your email has not been verified yet.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="mt-3 w-full rounded-lg border border-blue-600 bg-white px-4 py-2.5 text-sm font-medium text-blue-600 transition hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {resendLoading
+                  ? 'Sending...'
+                  : 'Resend Verification Email'}
+              </button>
+
+              {resendMessage && (
+                <p className="mt-3 text-sm text-blue-800">
+                  {resendMessage}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

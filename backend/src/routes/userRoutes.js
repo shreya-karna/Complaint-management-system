@@ -6,6 +6,8 @@ import {
   updateUser,
   loginUser,
   getStaffByDepartment,
+  verifyEmail,
+  resendVerificationEmail,
 } from '../controllers/userController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
@@ -16,6 +18,8 @@ const router = express.Router()
 // Public routes
 router.post('/', createUser)
 router.post('/login', loginUser)
+router.get('/verify-email/:token', verifyEmail)
+router.post('/resend-verification', resendVerificationEmail)
 
 // Admin-only routes
 router.get(
