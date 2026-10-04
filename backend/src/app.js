@@ -20,9 +20,9 @@ app.use(
   })
 )
 
-app.use('/api/ai', aiRoutes)
-
 app.use(express.json())
+
+app.use('/api/ai', aiRoutes)
 
 app.use(
   '/uploads',

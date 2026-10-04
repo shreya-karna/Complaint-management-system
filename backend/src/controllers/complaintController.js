@@ -3,6 +3,13 @@ import User from '../models/User.js'
 import Notification from '../models/Notification.js'
 import { analyzeNewComplaint } from '../services/aiPipeline.js'
 
+// Converts any form value to a trimmed string. A field sent twice
+// arrives as an array, which has no .trim().
+const toText = (value) => {
+  const first = Array.isArray(value) ? value[0] : value
+  return first === undefined || first === null ? '' : String(first).trim()
+}
+
 const generateComplaintNumber = async () => {
   const year = new Date().getFullYear()
 
@@ -28,16 +35,14 @@ const generateComplaintNumber = async () => {
 
 export const createComplaint = async (req, res) => {
   try {
-    const {
-      title,
-      category,
-      description,
-      province,
-      district,
-      municipality,
-      ward,
-      tole,
-    } = req.body
+    const title = toText(req.body.title)
+    const category = toText(req.body.category)
+    const description = toText(req.body.description)
+    const province = toText(req.body.province)
+    const district = toText(req.body.district)
+    const municipality = toText(req.body.municipality)
+    const ward = toText(req.body.ward)
+    const tole = toText(req.body.tole)
 
     let department
 

@@ -1,11 +1,14 @@
 import math
+
 from sentence_transformers import util
+
 from app.embedder import encoder
 
 DUPLICATE_THRESHOLD = 0.75        # text + location blend
-TEXT_ONLY_THRESHOLD = 0.82        # when GPS is missing
+TEXT_ONLY_THRESHOLD = 0.82        # used when GPS is missing
 MAX_RADIUS_M = 500
 W_TEXT, W_LOC = 0.7, 0.3
+
 
 def haversine_m(lat1, lng1, lat2, lng2):
     R = 6371000
@@ -14,9 +17,11 @@ def haversine_m(lat1, lng1, lat2, lng2):
          math.cos(p1) * math.cos(p2) * math.sin(math.radians(lng2 - lng1) / 2) ** 2)
     return 2 * R * math.asin(math.sqrt(a))
 
+
 def find_duplicate(text, lat, lng, candidates):
     if not candidates:
         return None
+
     new = encoder.encode(text, convert_to_tensor=True)
     embs = encoder.encode([c["text"] for c in candidates], convert_to_tensor=True)
     sims = util.cos_sim(new, embs)[0]
