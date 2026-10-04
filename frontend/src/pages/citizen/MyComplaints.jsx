@@ -278,22 +278,22 @@ function MyComplaints() {
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
                             <span>
-                              {complaint.location
-  ? typeof complaint.location === 'string'
-    ? complaint.location
-    : [
-        complaint.location.province,
-        complaint.location.district,
-        complaint.location.municipality,
-        complaint.location.ward
-          ? 'Ward ' + complaint.location.ward
-          : '',
-        complaint.location.tole,
-      ]
-        .filter(Boolean)
-        .join(', ')
-  : 'N/A'}
-                            </span>
+  {complaint.location
+    ? typeof complaint.location === 'string'
+      ? complaint.location
+      : [
+          complaint.location.province,
+          complaint.location.district,
+          complaint.location.municipality,
+          complaint.location.ward
+            ? `Ward ${complaint.location.ward}`
+            : '',
+          complaint.location.tole,
+        ]
+          .filter(Boolean)
+          .join(', ')
+    : 'N/A'}
+</span>
                           </div>
 
                           <div className="flex items-center gap-2">

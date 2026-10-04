@@ -5,6 +5,7 @@ import {
   createUser,
   updateUser,
   loginUser,
+  getStaffByDepartment,
 } from '../controllers/userController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
@@ -22,6 +23,13 @@ router.get(
   authenticate,
   authorizeRoles('ADMIN'),
   getUsers
+)
+
+router.get(
+  '/department/:departmentId/staff',
+  authenticate,
+  authorizeRoles('ADMIN'),
+  getStaffByDepartment
 )
 
 router.patch(

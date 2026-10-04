@@ -7,7 +7,7 @@ import complaintRoutes from './routes/complaintRoutes.js'
 import departmentRoutes from './routes/departmentRoutes.js'
 import categoryRoutes from './routes/categoryRoutes.js'
 import userRoutes from './routes/userRoutes.js'
-import aiRoutes from './routes/aiRoutes.js'
+import notificationRoutes from './routes/notificationRoutes.js'
 
 dotenv.config()
 
@@ -39,6 +39,11 @@ app.get('/api/health', (req, res) => {
 app.use(
   '/api/complaints',
   complaintRoutes
+)
+
+app.use(
+  '/api/notifications',
+  notificationRoutes
 )
 
 app.use(

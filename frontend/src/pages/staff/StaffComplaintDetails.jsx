@@ -18,14 +18,11 @@ const SERVER_URL = import.meta.env.VITE_API_URL
   : ''
 
 const statuses = [
-  'SUBMITTED',
   'UNDER_REVIEW',
-  'ASSIGNED',
   'IN_PROGRESS',
   'RESOLVED',
   'CLOSED',
   'REJECTED',
-  'REOPENED',
 ]
 
 const formatDateTime = (date) => {
@@ -302,8 +299,22 @@ function StaffComplaintDetails() {
                     />
 
                     <p className="text-sm text-gray-700">
-                      {complaint.location}
-                    </p>
+  {complaint.location
+    ? typeof complaint.location === 'string'
+      ? complaint.location
+      : [
+          complaint.location.province,
+          complaint.location.district,
+          complaint.location.municipality,
+          complaint.location.ward
+            ? `Ward ${complaint.location.ward}`
+            : '',
+          complaint.location.tole,
+        ]
+          .filter(Boolean)
+          .join(', ')
+    : 'N/A'}
+</p>
 
                   </div>
                 </div>

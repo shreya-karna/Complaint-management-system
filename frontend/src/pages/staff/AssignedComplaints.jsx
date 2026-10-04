@@ -88,6 +88,8 @@ function AssignedComplaints() {
   const [priorityFilter, setPriorityFilter] =
     useState('ALL')
 
+  const [view, setView] = useState('department')
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -97,7 +99,9 @@ function AssignedComplaints() {
         setIsLoading(true)
         setError('')
 
-        const response = await getComplaints()
+        const response = await getComplaints(
+          view === 'assigned'
+        )
 
         setComplaints(response.complaints || [])
       } catch (error) {
@@ -116,7 +120,7 @@ function AssignedComplaints() {
     }
 
     fetchComplaints()
-  }, [])
+  }, [view])
 
   const filteredComplaints = complaints.filter(
     (complaint) => {
@@ -140,7 +144,7 @@ function AssignedComplaints() {
           .includes(search) ||
         complaint.departmentName
           ?.toLowerCase()
-          .includes(search) 
+          .includes(search)
 
       const matchesStatus =
         statusFilter === 'ALL' ||
@@ -162,6 +166,11 @@ function AssignedComplaints() {
     setSearchTerm('')
     setStatusFilter('ALL')
     setPriorityFilter('ALL')
+  }
+
+  const handleViewChange = (newView) => {
+    setView(newView)
+    clearFilters()
   }
 
   const hasActiveFilters =
@@ -203,8 +212,45 @@ function AssignedComplaints() {
           </p>
         </div>
 
+        {/* Complaint View Tabs */}
+        <div className="mt-8 rounded-xl border bg-white p-2 shadow-sm">
+
+          <div className="grid grid-cols-2 gap-2">
+
+            <button
+              type="button"
+              onClick={() =>
+                handleViewChange('department')
+              }
+              className={`rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                view === 'department'
+                  ? 'bg-black text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              All Department Complaints
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleViewChange('assigned')
+              }
+              className={`rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                view === 'assigned'
+                  ? 'bg-black text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              My Assigned Complaints
+            </button>
+
+          </div>
+
+        </div>
+
         {/* Filters */}
-        <div className="mt-8 rounded-xl border bg-white p-5 shadow-sm">
+        <div className="mt-4 rounded-xl border bg-white p-5 shadow-sm">
 
           <div className="flex items-center gap-2">
 
@@ -358,7 +404,9 @@ function AssignedComplaints() {
               </h2>
 
               <p className="mt-2 text-sm text-gray-500">
-                Try a different search term or filter.
+                {view === 'assigned'
+                  ? 'No complaints are currently assigned to you.'
+                  : 'There are no complaints in your department.'}
               </p>
 
               {hasActiveFilters && (
@@ -453,7 +501,21 @@ function AssignedComplaints() {
                           <span>
                             Location:{' '}
                             <span className="font-medium text-gray-700">
-                              {complaint.location}
+                              {complaint.location
+    ? typeof complaint.location === 'string'
+      ? complaint.location
+      : [
+          complaint.location.province,
+          complaint.location.district,
+          complaint.location.municipality,
+          complaint.location.ward
+            ? 'Ward ' + complaint.location.ward
+            : '',
+          complaint.location.tole,
+        ]
+          .filter(Boolean)
+          .join(', ')
+    : 'N/A'}
                             </span>
                           </span>
 
@@ -492,3 +554,4 @@ function AssignedComplaints() {
 }
 
 export default AssignedComplaints
+

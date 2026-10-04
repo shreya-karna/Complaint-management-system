@@ -6,7 +6,7 @@ import {
   assignComplaint,
 } from '../../services/complaintService'
 
-import { getUsers } from '../../services/userService'
+import { getUsers, getStaffByDepartment, } from '../../services/userService'
 
 const formatDateTime = (date) => {
   if (!date) {
@@ -34,46 +34,59 @@ function AdminComplaintDetails() {
   const [assignSuccess, setAssignSuccess] = useState('')
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError('')
+const fetchData = async () => {
+  try {
+    setLoading(true)
+    setError('')
 
-        const [complaintResponse, usersResponse] =
-          await Promise.all([
-            getComplaintById(id),
-            getUsers(),
-          ])
+    // Load the complaint first
+    const complaintResponse =
+      await getComplaintById(id)
 
-        const loadedComplaint =
-          complaintResponse.complaint
+    const loadedComplaint =
+      complaintResponse.complaint
 
-        setComplaint(loadedComplaint)
+    setComplaint(loadedComplaint)
 
-        const activeStaff = (
-          usersResponse.users || []
-        ).filter(
-          (user) =>
-            user.role === 'STAFF' &&
-            user.isActive === true &&
-            user.departmentId?._id?.toString() ===
-              loadedComplaint.departmentId?.toString()
+    // Load staff separately.
+    // If this fails, the complaint should still load.
+    try {
+      const staffResponse =
+        await getStaffByDepartment(
+          loadedComplaint.departmentId
         )
 
-        setStaffMembers(activeStaff)
+      setStaffMembers(
+        staffResponse.staff || []
+      )
+    } catch (staffError) {
+      console.error(
+        'Failed to load department staff:',
+        staffError
+      )
 
-        if (loadedComplaint.assignedTo) {
-          setSelectedStaff(
-            loadedComplaint.assignedTo.toString()
-          )
-        }
-      } catch (error) {
-        console.error(error)
-        setError('Failed to load complaint.')
-      } finally {
-        setLoading(false)
-      }
+      setStaffMembers([])
     }
+
+    if (loadedComplaint.assignedTo) {
+      setSelectedStaff(
+        loadedComplaint.assignedTo.toString()
+      )
+    }
+  } catch (error) {
+    console.error(
+      'Failed to load complaint:',
+      error
+    )
+
+    setError(
+      error.response?.data?.message ||
+        'Failed to load complaint.'
+    )
+  } finally {
+    setLoading(false)
+  }
+}
 
     fetchData()
   }, [id])
@@ -278,8 +291,7 @@ function AdminComplaintDetails() {
             </h2>
 
             <p className="mb-4 text-sm text-gray-500">
-              Assign this complaint to an active
-              staff member from the same department.
+         Assign this complaint to a staff member from the same department.
             </p>
 
             <div className="flex flex-col gap-3 md:flex-row">
@@ -326,8 +338,7 @@ function AdminComplaintDetails() {
 
             {staffMembers.length === 0 && (
               <p className="mt-3 text-sm text-gray-500">
-                No active staff members are available
-                in this department.
+No staff members are available in this department.
               </p>
             )}
 
