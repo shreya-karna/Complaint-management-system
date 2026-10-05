@@ -5,6 +5,7 @@ import RoleProtectedRoute from './RoleProtectedRoute'
 
 import Login from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
+import VerifyEmail from '../pages/auth/VerifyEmail'
 
 import CitizenDashboard from '../pages/citizen/CitizenDashboard'
 import DepartmentSelection from '../pages/citizen/DepartmentSelection'
@@ -34,6 +35,10 @@ function AppRoutes() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route
+          path="/verify-email/:token"
+          element={<VerifyEmail />}
+        />
 
         {/* Citizen routes */}
         <Route element={<ProtectedRoute />}>
@@ -45,31 +50,36 @@ function AppRoutes() {
             }
           >
             <Route path="/" element={<CitizenDashboard />} />
+
             <Route
               path="/select-department"
               element={<DepartmentSelection />}
             />
+
             <Route
               path="/submit-complaint"
               element={<ComplaintForm />}
             />
+
             <Route
               path="/complaint-submitted"
               element={<ComplaintSubmitted />}
             />
+
             <Route
               path="/my-complaints"
               element={<MyComplaints />}
             />
-<Route
-  path="/track-complaint"
-  element={<TrackComplaint />}
-/>
 
-<Route
-  path="/public-complaints"
-  element={<PublicComplaints />}
-/>
+            <Route
+              path="/track-complaint"
+              element={<TrackComplaint />}
+            />
+
+            <Route
+              path="/public-complaints"
+              element={<PublicComplaints />}
+            />
 
             <Route
               path="/complaints/:id"
@@ -91,10 +101,12 @@ function AppRoutes() {
               path="/staff"
               element={<StaffDashboard />}
             />
+
             <Route
               path="/staff/complaints"
               element={<AssignedComplaints />}
             />
+
             <Route
               path="/staff/complaints/:id"
               element={<StaffComplaintDetails />}
@@ -115,22 +127,27 @@ function AppRoutes() {
               path="/admin"
               element={<AdminDashboard />}
             />
+
             <Route
               path="/admin/users"
               element={<ManageUsers />}
             />
+
             <Route
               path="/admin/departments"
               element={<ManageDepartments />}
             />
+
             <Route
               path="/admin/categories"
               element={<ManageCategories />}
             />
+
             <Route
               path="/admin/complaints"
               element={<AdminComplaints />}
             />
+
             <Route
               path="/admin/complaints/:id"
               element={<AdminComplaintDetails />}
