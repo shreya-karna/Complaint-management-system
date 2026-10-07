@@ -108,9 +108,9 @@ function AdminComplaintDetails() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen p-8">
         <div className="mx-auto max-w-5xl">
-          <p className="text-gray-500">Loading complaint...</p>
+          <p className="text-muted-foreground">Loading complaint...</p>
         </div>
       </div>
     );
@@ -118,7 +118,7 @@ function AdminComplaintDetails() {
 
   if (error || !complaint) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <div className="min-h-screen p-8">
         <div className="mx-auto max-w-5xl">
           <button
             type="button"
@@ -128,8 +128,10 @@ function AdminComplaintDetails() {
             ← Back
           </button>
 
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <p className="text-red-500">{error || "Complaint not found."}</p>
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <p className="text-red-500 dark:text-red-400">
+              {error || "Complaint not found."}
+            </p>
           </div>
         </div>
       </div>
@@ -137,40 +139,44 @@ function AdminComplaintDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen p-8">
       <div className="mx-auto max-w-5xl">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="mb-6 rounded-md border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50"
+          className="mb-6 rounded-md border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
         >
           ← Back
         </button>
 
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Complaint Details</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Complaint Details
+          </h1>
 
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-muted-foreground">
             Complaint #{complaint.complaintNumber}
           </p>
         </div>
 
         <div className="space-y-6">
           {/* Complaint Information */}
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-semibold text-foreground">
               Complaint Information
             </h2>
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <p className="text-sm text-gray-500">Complaint Number</p>
+                <p className="text-sm text-muted-foreground">
+                  Complaint Number
+                </p>
 
                 <p className="mt-1 font-medium">{complaint.complaintNumber}</p>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Submitted</p>
+                <p className="text-sm text-muted-foreground">Submitted</p>
 
                 <p className="mt-1 font-medium">
                   {formatDateTime(complaint.createdAt)}
@@ -178,19 +184,19 @@ function AdminComplaintDetails() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Department</p>
+                <p className="text-sm text-muted-foreground">Department</p>
 
                 <p className="mt-1 font-medium">{complaint.departmentName}</p>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Category</p>
+                <p className="text-sm text-muted-foreground">Category</p>
 
                 <p className="mt-1 font-medium">{complaint.category}</p>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Location</p>
+                <p className="text-sm text-muted-foreground">Location</p>
 
                 <p className="mt-1 font-medium">
                   {typeof complaint.location === "object"
@@ -210,32 +216,34 @@ function AdminComplaintDetails() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Priority</p>
+                <p className="text-sm text-muted-foreground">Priority</p>
 
                 <p className="mt-1 font-medium">{complaint.priority}</p>
               </div>
             </div>
 
             <div className="mt-6">
-              <p className="text-sm text-gray-500">Title</p>
+              <p className="text-sm text-muted-foreground">Title</p>
 
               <p className="mt-1 text-lg font-semibold">{complaint.title}</p>
             </div>
 
             <div className="mt-6">
-              <p className="text-sm text-gray-500">Description</p>
+              <p className="text-sm text-muted-foreground">Description</p>
 
-              <p className="mt-2 whitespace-pre-wrap text-gray-700">
+              <p className="mt-2 whitespace-pre-wrap text-foreground/80">
                 {complaint.description}
               </p>
             </div>
           </div>
 
           {/* Assignment */}
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">Assign Complaint</h2>
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">
+              Assign Complaint
+            </h2>
 
-            <p className="mb-4 text-sm text-gray-500">
+            <p className="mb-4 text-sm text-muted-foreground">
               Assign this complaint to a staff member from the same department.
             </p>
 
@@ -247,7 +255,7 @@ function AdminComplaintDetails() {
                   setAssignError("");
                   setAssignSuccess("");
                 }}
-                className="w-full rounded-md border bg-white px-3 py-2 text-sm md:flex-1"
+                className="w-full rounded-md border bg-card px-3 py-2 text-sm md:flex-1"
               >
                 <option value="">Select staff member</option>
 
@@ -263,29 +271,35 @@ function AdminComplaintDetails() {
                 type="button"
                 onClick={handleAssign}
                 disabled={assigning || staffMembers.length === 0}
-                className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {assigning ? "Assigning..." : "Assign"}
               </button>
             </div>
 
             {staffMembers.length === 0 && (
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mt-3 text-sm text-muted-foreground">
                 No staff members are available in this department.
               </p>
             )}
 
             {assignError && (
-              <p className="mt-3 text-sm text-red-600">{assignError}</p>
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {assignError}
+              </p>
             )}
 
             {assignSuccess && (
-              <p className="mt-3 text-sm text-green-600">{assignSuccess}</p>
+              <p className="mt-3 text-sm text-green-600 dark:text-green-400">
+                {assignSuccess}
+              </p>
             )}
 
             {complaint.assignedTo && (
-              <div className="mt-4 rounded-md bg-gray-50 p-3">
-                <p className="text-sm text-gray-500">Currently Assigned</p>
+              <div className="mt-4 rounded-md bg-muted p-3">
+                <p className="text-sm text-muted-foreground">
+                  Currently Assigned
+                </p>
 
                 <p className="mt-1 font-medium">
                   {staffMembers.find(
@@ -298,45 +312,55 @@ function AdminComplaintDetails() {
           </div>
 
           {/* Current Status */}
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">Current Status</h2>
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">
+              Current Status
+            </h2>
 
-            <span className="inline-block rounded-full bg-gray-100 px-4 py-2 text-sm font-medium">
+            <span className="inline-block rounded-full bg-muted px-4 py-2 text-sm font-medium">
               {complaint.status}
             </span>
           </div>
 
           {/* Status History */}
-          <div className="rounded-lg bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Status History</h2>
+          <div className="rounded-lg bg-card p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-semibold text-foreground">
+              Status History
+            </h2>
 
             {complaint.history && complaint.history.length > 0 ? (
               <div className="space-y-4">
                 {complaint.history.map((item, index) => (
-                  <div key={index} className="border-l-2 border-gray-200 pl-4">
+                  <div key={index} className="border-l-2 border-border pl-4">
                     <p className="font-semibold">{item.status}</p>
 
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {formatDateTime(item.changedAt)}
                     </p>
 
                     {item.note && (
-                      <p className="mt-2 text-sm text-gray-700">{item.note}</p>
+                      <p className="mt-2 text-sm text-foreground/80">
+                        {item.note}
+                      </p>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">No status history available.</p>
+              <p className="text-muted-foreground">
+                No status history available.
+              </p>
             )}
           </div>
 
           {/* Resolution */}
           {complaint.resolution && (
-            <div className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-xl font-semibold">Resolution</h2>
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-xl font-semibold text-foreground">
+                Resolution
+              </h2>
 
-              <p className="whitespace-pre-wrap text-gray-700">
+              <p className="whitespace-pre-wrap text-foreground/80">
                 {complaint.resolution}
               </p>
             </div>
@@ -344,8 +368,10 @@ function AdminComplaintDetails() {
 
           {/* Attachments */}
           {complaint.attachments && complaint.attachments.length > 0 && (
-            <div className="rounded-lg bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-xl font-semibold">Attachments</h2>
+            <div className="rounded-lg bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-xl font-semibold text-foreground">
+                Attachments
+              </h2>
 
               <div className="space-y-2">
                 {complaint.attachments.map((attachment, index) => (
@@ -354,7 +380,7 @@ function AdminComplaintDetails() {
                     href={`${SERVER_URL}${attachment.url}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="block rounded-md border p-3 text-blue-600 hover:bg-gray-50"
+                    className="block rounded-md border p-3 text-blue-600 dark:text-blue-400 hover:bg-accent"
                   >
                     {attachment.name}
                   </a>

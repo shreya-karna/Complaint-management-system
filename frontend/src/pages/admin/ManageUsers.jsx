@@ -1,97 +1,81 @@
-import { useEffect, useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
-import provinces from '../../data/provinces.json'
-import districts from '../../data/districts.json'
-import localLevels from '../../data/localLevels.json'
+import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import provinces from "../../data/provinces.json";
+import districts from "../../data/districts.json";
+import localLevels from "../../data/localLevels.json";
 
-import {
-  createUser,
-  getUsers,
-  updateUser,
-} from '../../services/userService'
+import { createUser, getUsers, updateUser } from "../../services/userService";
 
-import {
-  getDepartments,
-} from '../../services/departmentService'
+import { getDepartments } from "../../services/departmentService";
 
 function ManageUsers() {
-  const [users, setUsers] = useState([])
-  const [departments, setDepartments] = useState([])
+  const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [editingUser, setEditingUser] = useState(null)
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
+    name: "",
+    email: "",
+    phone: "",
 
     address: {
-      province: '',
-      district: '',
-      municipality: '',
-      ward: '',
-      tole: '',
-      houseNumber: '',
+      province: "",
+      district: "",
+      municipality: "",
+      ward: "",
+      tole: "",
+      houseNumber: "",
     },
 
-    employeeId: '',
-    designation: '',
-    password: '',
-    role: 'CITIZEN',
-    departmentId: '',
-  })
+    employeeId: "",
+    designation: "",
+    password: "",
+    role: "CITIZEN",
+    departmentId: "",
+  });
 
-  const [filteredDistricts, setFilteredDistricts] =
-    useState([])
+  const [filteredDistricts, setFilteredDistricts] = useState([]);
 
-  const [filteredLocalLevels, setFilteredLocalLevels] =
-    useState([])
+  const [filteredLocalLevels, setFilteredLocalLevels] = useState([]);
 
   const fetchData = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
 
-      const [
-        usersResponse,
-        departmentsResponse,
-      ] = await Promise.all([
+      const [usersResponse, departmentsResponse] = await Promise.all([
         getUsers(),
         getDepartments(),
-      ])
+      ]);
 
-      setUsers(usersResponse.users || [])
+      setUsers(usersResponse.users || []);
 
-      setDepartments(
-        departmentsResponse.departments || []
-      )
+      setDepartments(departmentsResponse.departments || []);
     } catch (error) {
-      console.error(
-        'Failed to fetch user data:',
-        error
-      )
+      console.error("Failed to fetch user data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const handleChange = (event) => {
-    const { name, value } = event.target
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleAddressChange = (event) => {
-    const { name, value } = event.target
+    const { name, value } = event.target;
 
     /*
      * Province
@@ -101,21 +85,17 @@ function ManageUsers() {
      * name_en
      * name_ne
      */
-    if (name === 'province') {
+    if (name === "province") {
       const selectedProvince = provinces.find(
-        (province) =>
-          String(province.code) === String(value)
-      )
+        (province) => String(province.code) === String(value),
+      );
 
-      const provinceDistricts =
-        districts.filter(
-          (district) =>
-            String(district.province_code) ===
-            String(value)
-        )
+      const provinceDistricts = districts.filter(
+        (district) => String(district.province_code) === String(value),
+      );
 
-      setFilteredDistricts(provinceDistricts)
-      setFilteredLocalLevels([])
+      setFilteredDistricts(provinceDistricts);
+      setFilteredLocalLevels([]);
 
       setFormData((previous) => ({
         ...previous,
@@ -123,16 +103,15 @@ function ManageUsers() {
         address: {
           ...previous.address,
 
-          province:
-            selectedProvince?.name_en || '',
+          province: selectedProvince?.name_en || "",
 
-          district: '',
-          municipality: '',
-          ward: '',
+          district: "",
+          municipality: "",
+          ward: "",
         },
-      }))
+      }));
 
-      return
+      return;
     }
 
     /*
@@ -143,23 +122,16 @@ function ManageUsers() {
      * name_en
      * province_code
      */
-    if (name === 'district') {
+    if (name === "district") {
       const selectedDistrict = districts.find(
-        (district) =>
-          String(district.code) ===
-          String(value)
-      )
+        (district) => String(district.code) === String(value),
+      );
 
-      const districtLocalLevels =
-        localLevels.filter(
-          (localLevel) =>
-            String(localLevel.district_code) ===
-            String(value)
-        )
+      const districtLocalLevels = localLevels.filter(
+        (localLevel) => String(localLevel.district_code) === String(value),
+      );
 
-      setFilteredLocalLevels(
-        districtLocalLevels
-      )
+      setFilteredLocalLevels(districtLocalLevels);
 
       setFormData((previous) => ({
         ...previous,
@@ -167,15 +139,14 @@ function ManageUsers() {
         address: {
           ...previous.address,
 
-          district:
-            selectedDistrict?.name_en || '',
+          district: selectedDistrict?.name_en || "",
 
-          municipality: '',
-          ward: '',
+          municipality: "",
+          ward: "",
         },
-      }))
+      }));
 
-      return
+      return;
     }
 
     /*
@@ -187,13 +158,10 @@ function ManageUsers() {
      * district_code
      * province_code
      */
-    if (name === 'municipality') {
-      const selectedLocalLevel =
-        localLevels.find(
-          (localLevel) =>
-            String(localLevel.code) ===
-            String(value)
-        )
+    if (name === "municipality") {
+      const selectedLocalLevel = localLevels.find(
+        (localLevel) => String(localLevel.code) === String(value),
+      );
 
       setFormData((previous) => ({
         ...previous,
@@ -201,14 +169,13 @@ function ManageUsers() {
         address: {
           ...previous.address,
 
-          municipality:
-            selectedLocalLevel?.name_en || '',
+          municipality: selectedLocalLevel?.name_en || "",
 
-          ward: '',
+          ward: "",
         },
-      }))
+      }));
 
-      return
+      return;
     }
 
     /*
@@ -221,41 +188,41 @@ function ManageUsers() {
         ...previous.address,
         [name]: value,
       },
-    }))
-  }
+    }));
+  };
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      email: '',
-      phone: '',
+      name: "",
+      email: "",
+      phone: "",
 
       address: {
-        province: '',
-        district: '',
-        municipality: '',
-        ward: '',
-        tole: '',
-        houseNumber: '',
+        province: "",
+        district: "",
+        municipality: "",
+        ward: "",
+        tole: "",
+        houseNumber: "",
       },
 
-      employeeId: '',
-      designation: '',
-      password: '',
-      role: 'CITIZEN',
-      departmentId: '',
-    })
+      employeeId: "",
+      designation: "",
+      password: "",
+      role: "CITIZEN",
+      departmentId: "",
+    });
 
-    setEditingUser(null)
-    setFilteredDistricts([])
-    setFilteredLocalLevels([])
-  }
+    setEditingUser(null);
+    setFilteredDistricts([]);
+    setFilteredLocalLevels([]);
+  };
 
   const handleSubmit = async (event) => {
-    event.preventDefault()
+    event.preventDefault();
 
     try {
-      setSaving(true)
+      setSaving(true);
 
       const payload = {
         name: formData.name,
@@ -269,77 +236,60 @@ function ManageUsers() {
         role: formData.role,
 
         departmentId:
-  formData.role === 'CITIZEN'
-    ? null
-    : formData.departmentId || null,
-      }
+          formData.role === "CITIZEN" ? null : formData.departmentId || null,
+      };
 
       if (formData.password) {
-        payload.password = formData.password
+        payload.password = formData.password;
       }
 
       if (editingUser) {
-        await updateUser(
-          editingUser._id,
-          payload
-        )
+        await updateUser(editingUser._id, payload);
       } else {
         if (!formData.password) {
-          alert(
-            'Password is required when creating a user.'
-          )
+          alert("Password is required when creating a user.");
 
-          return
+          return;
         }
 
-        await createUser(payload)
+        await createUser(payload);
       }
 
       alert(
         editingUser
-          ? 'User updated successfully.'
-          : 'User created successfully.'
-      )
+          ? "User updated successfully."
+          : "User created successfully.",
+      );
 
-      resetForm()
-      fetchData()
+      resetForm();
+      fetchData();
     } catch (error) {
-      console.error(
-        'Failed to save user:',
-        error
-      )
+      console.error("Failed to save user:", error);
 
-      alert(
-        error.response?.data?.message ||
-          'Failed to save user.'
-      )
+      alert(error.response?.data?.message || "Failed to save user.");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleEdit = (user) => {
-    setEditingUser(user)
+    setEditingUser(user);
 
     /*
      * Find the province using the stored
      * English province name.
      */
     const selectedProvince = provinces.find(
-      (province) =>
-        province.name_en ===
-        user.address?.province
-    )
+      (province) => province.name_en === user.address?.province,
+    );
 
     /*
      * Find the district using the stored
      * English district name.
      */
     const selectedDistrict = districts.find(
-      (district) =>
-        district.name_en ===
-        user.address?.district
-    )
+      (district) => district.name_en === user.address?.district,
+    );
 
     /*
      * Load districts belonging to
@@ -349,12 +299,11 @@ function ManageUsers() {
       setFilteredDistricts(
         districts.filter(
           (district) =>
-            String(district.province_code) ===
-            String(selectedProvince.code)
-        )
-      )
+            String(district.province_code) === String(selectedProvince.code),
+        ),
+      );
     } else {
-      setFilteredDistricts([])
+      setFilteredDistricts([]);
     }
 
     /*
@@ -365,115 +314,86 @@ function ManageUsers() {
       setFilteredLocalLevels(
         localLevels.filter(
           (localLevel) =>
-            String(
-              localLevel.district_code
-            ) ===
-            String(selectedDistrict.code)
-        )
-      )
+            String(localLevel.district_code) === String(selectedDistrict.code),
+        ),
+      );
     } else {
-      setFilteredLocalLevels([])
+      setFilteredLocalLevels([]);
     }
 
     setFormData({
-      name: user.name || '',
-      email: user.email || '',
-      phone: user.phone || '',
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
 
       address: {
-        province:
-          user.address?.province || '',
+        province: user.address?.province || "",
 
-        district:
-          user.address?.district || '',
+        district: user.address?.district || "",
 
-        municipality:
-          user.address?.municipality || '',
+        municipality: user.address?.municipality || "",
 
-        ward:
-          user.address?.ward || '',
+        ward: user.address?.ward || "",
 
-        tole:
-          user.address?.tole || '',
+        tole: user.address?.tole || "",
 
-        houseNumber:
-          user.address?.houseNumber || '',
+        houseNumber: user.address?.houseNumber || "",
       },
 
-      employeeId:
-        user.employeeId || '',
+      employeeId: user.employeeId || "",
 
-      designation:
-        user.designation || '',
+      designation: user.designation || "",
 
-      password: '',
+      password: "",
 
-      role:
-        user.role || 'CITIZEN',
+      role: user.role || "CITIZEN",
 
-      departmentId:
-        user.departmentId?._id ||
-        user.departmentId ||
-        '',
-    })
+      departmentId: user.departmentId?._id || user.departmentId || "",
+    });
 
     window.scrollTo({
       top: 0,
-      behavior: 'smooth',
-    })
-  }
+      behavior: "smooth",
+    });
+  };
 
   const handleToggleActive = async (user) => {
     try {
       await updateUser(user._id, {
         isActive: !user.isActive,
-      })
+      });
 
-      fetchData()
+      fetchData();
     } catch (error) {
-      console.error(
-        'Failed to update user status:',
-        error
-      )
+      console.error("Failed to update user status:", error);
 
-      alert(
-        error.response?.data?.message ||
-          'Failed to update user status.'
-      )
+      alert(error.response?.data?.message || "Failed to update user status.");
     }
-  }
+  };
 
-  const isStaffOrAdmin =
-    formData.role === 'STAFF' ||
-    formData.role === 'ADMIN'
+  const isStaffOrAdmin = formData.role === "STAFF" || formData.role === "ADMIN";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen p-8">
       <div className="mx-auto max-w-7xl">
-
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">
-            Manage Users
-          </h1>
+          <h1 className="text-3xl font-bold text-foreground">Manage Users</h1>
 
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-muted-foreground">
             Create, update and manage system users.
           </p>
         </div>
 
         {/* User Form */}
-        <div className="mb-8 rounded-xl bg-white p-6 shadow-sm">
-
+        <div className="mb-8 rounded-xl bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">
-                {editingUser
-                  ? 'Edit User'
-                  : 'Add New User'}
+              <h2 className="text-xl font-semibold text-foreground">
+                {editingUser ? "Edit User" : "Add New User"}
               </h2>
 
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Enter the user's information below.
               </p>
             </div>
@@ -482,26 +402,21 @@ function ManageUsers() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                className="rounded-md bg-red-600 px-4 py-2 text-sm text-primary-foreground hover:bg-red-700"
               >
                 Cancel Edit
               </button>
             )}
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-6"
-          >
-
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Basic Information
               </h3>
 
               <div className="grid gap-4 md:grid-cols-2">
-
                 {/* Full Name */}
                 <div>
                   <label className="mb-1 block text-sm font-medium">
@@ -514,7 +429,7 @@ function ManageUsers() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
 
@@ -530,7 +445,7 @@ function ManageUsers() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
 
@@ -545,47 +460,37 @@ function ManageUsers() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
 
                 {/* Role */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Role
-                  </label>
+                  <label className="mb-1 block text-sm font-medium">Role</label>
 
                   <select
                     name="role"
                     value={formData.role}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   >
-                    <option value="CITIZEN">
-                      Citizen
-                    </option>
+                    <option value="CITIZEN">Citizen</option>
 
-                    <option value="STAFF">
-                      Staff
-                    </option>
+                    <option value="STAFF">Staff</option>
 
-                    <option value="ADMIN">
-                      Admin
-                    </option>
+                    <option value="ADMIN">Admin</option>
                   </select>
                 </div>
-
               </div>
             </div>
 
             {/* Address */}
             <div>
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Address
               </h3>
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-
                 {/* Province */}
                 <div>
                   <label className="mb-1 block text-sm font-medium">
@@ -597,27 +502,19 @@ function ManageUsers() {
                     value={
                       provinces.find(
                         (province) =>
-                          province.name_en ===
-                          formData.address.province
-                      )?.code || ''
+                          province.name_en === formData.address.province,
+                      )?.code || ""
                     }
                     onChange={handleAddressChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   >
-                    <option value="">
-                      Select Province
-                    </option>
+                    <option value="">Select Province</option>
 
-                    {provinces.map(
-                      (province) => (
-                        <option
-                          key={province.code}
-                          value={province.code}
-                        >
-                          {province.name_en}
-                        </option>
-                      )
-                    )}
+                    {provinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name_en}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -632,32 +529,24 @@ function ManageUsers() {
                     value={
                       districts.find(
                         (district) =>
-                          district.name_en ===
-                          formData.address.district
-                      )?.code || ''
+                          district.name_en === formData.address.district,
+                      )?.code || ""
                     }
                     onChange={handleAddressChange}
-                    disabled={
-                      !formData.address.province
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+                    disabled={!formData.address.province}
+                    className="w-full rounded-md border border-input px-3 py-2 disabled:bg-muted"
                   >
                     <option value="">
                       {formData.address.province
-                        ? 'Select District'
-                        : 'Select Province First'}
+                        ? "Select District"
+                        : "Select Province First"}
                     </option>
 
-                    {filteredDistricts.map(
-                      (district) => (
-                        <option
-                          key={district.code}
-                          value={district.code}
-                        >
-                          {district.name_en}
-                        </option>
-                      )
-                    )}
+                    {filteredDistricts.map((district) => (
+                      <option key={district.code} value={district.code}>
+                        {district.name_en}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -672,33 +561,27 @@ function ManageUsers() {
                     value={
                       localLevels.find(
                         (localLevel) =>
-                          localLevel.name_en ===
-                          formData.address
-                            .municipality
-                      )?.code || ''
+                          localLevel.name_en === formData.address.municipality,
+                      )?.code || ""
                     }
                     onChange={handleAddressChange}
-                    disabled={
-                      !formData.address.district
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+                    disabled={!formData.address.district}
+                    className="w-full rounded-md border border-input px-3 py-2 disabled:bg-muted"
                   >
                     <option value="">
                       {formData.address.district
-                        ? 'Select Municipality / Rural Municipality'
-                        : 'Select District First'}
+                        ? "Select Municipality / Rural Municipality"
+                        : "Select District First"}
                     </option>
 
-                    {filteredLocalLevels.map(
-                      (localLevel) => (
-                        <option
-                          key={`${localLevel.district_code}-${localLevel.code}-${localLevel.name_en}`}
-                          value={localLevel.code}
-                        >
-                          {localLevel.name_en}
-                        </option>
-                      )
-                    )}
+                    {filteredLocalLevels.map((localLevel) => (
+                      <option
+                        key={`${localLevel.district_code}-${localLevel.code}-${localLevel.name_en}`}
+                        value={localLevel.code}
+                      >
+                        {localLevel.name_en}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -714,7 +597,7 @@ function ManageUsers() {
                     value={formData.address.ward}
                     onChange={handleAddressChange}
                     placeholder="e.g. 10"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
 
@@ -730,7 +613,7 @@ function ManageUsers() {
                     value={formData.address.tole}
                     onChange={handleAddressChange}
                     placeholder="e.g. Baneshwor"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
 
@@ -743,28 +626,23 @@ function ManageUsers() {
                   <input
                     type="text"
                     name="houseNumber"
-                    value={
-                      formData.address
-                        .houseNumber
-                    }
+                    value={formData.address.houseNumber}
                     onChange={handleAddressChange}
                     placeholder="e.g. 123"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="w-full rounded-md border border-input px-3 py-2"
                   />
                 </div>
-
               </div>
             </div>
 
             {/* Official Information */}
             {isStaffOrAdmin && (
               <div>
-                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Official Information
                 </h3>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-
                   {/* Employee ID */}
                   <div>
                     <label className="mb-1 block text-sm font-medium">
@@ -774,11 +652,9 @@ function ManageUsers() {
                     <input
                       type="text"
                       name="employeeId"
-                      value={
-                        formData.employeeId
-                      }
+                      value={formData.employeeId}
                       onChange={handleChange}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                      className="w-full rounded-md border border-input px-3 py-2"
                     />
                   </div>
 
@@ -791,11 +667,9 @@ function ManageUsers() {
                     <input
                       type="text"
                       name="designation"
-                      value={
-                        formData.designation
-                      }
+                      value={formData.designation}
                       onChange={handleChange}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                      className="w-full rounded-md border border-input px-3 py-2"
                     />
                   </div>
 
@@ -807,38 +681,26 @@ function ManageUsers() {
 
                     <select
                       name="departmentId"
-                      value={
-                        formData.departmentId
-                      }
+                      value={formData.departmentId}
                       onChange={handleChange}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                      className="w-full rounded-md border border-input px-3 py-2"
                     >
-                      <option value="">
-                        Select Department
-                      </option>
+                      <option value="">Select Department</option>
 
-                      {departments.map(
-                        (department) => (
-                          <option
-                            key={department._id}
-                            value={
-                              department._id
-                            }
-                          >
-                            {department.name}
-                          </option>
-                        )
-                      )}
+                      {departments.map((department) => (
+                        <option key={department._id} value={department._id}>
+                          {department.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
-
                 </div>
               </div>
             )}
 
             {/* Account Security */}
             <div>
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Account Security
               </h3>
 
@@ -848,210 +710,142 @@ function ManageUsers() {
                 </label>
 
                 <div className="relative">
-  <input
-    type={showPassword ? 'text' : 'password'}
-    name="password"
-    value={formData.password}
-    onChange={handleChange}
-    required={!editingUser}
-    placeholder={
-      editingUser
-        ? 'Leave blank to keep current password'
-        : 'Enter password'
-    }
-    className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10"
-  />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required={!editingUser}
+                    placeholder={
+                      editingUser
+                        ? "Leave blank to keep current password"
+                        : "Enter password"
+                    }
+                    className="w-full rounded-md border border-input px-3 py-2 pr-10"
+                  />
 
-  <button
-    type="button"
-    onClick={() =>
-      setShowPassword((previous) => !previous)
-    }
-    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-    aria-label={
-      showPassword
-        ? 'Hide password'
-        : 'Show password'
-    }
-  >
-    {showPassword ? (
-      <EyeOff size={18} />
-    ) : (
-      <Eye size={18} />
-    )}
-  </button>
-</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((previous) => !previous)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/80"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Form Buttons */}
             <div className="flex gap-3">
-
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-md bg-black px-5 py-2.5 text-white disabled:opacity-50"
+                className="rounded-md bg-primary px-5 py-2.5 text-primary-foreground disabled:opacity-50"
               >
                 {saving
-                  ? 'Saving...'
+                  ? "Saving..."
                   : editingUser
-                    ? 'Update User'
-                    : 'Create User'}
+                    ? "Update User"
+                    : "Create User"}
               </button>
 
               {editingUser && (
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded-md border border-gray-300 px-5 py-2.5 hover:bg-gray-50"
+                  className="rounded-md border border-input px-5 py-2.5 hover:bg-accent"
                 >
                   Cancel
                 </button>
               )}
-
             </div>
-
           </form>
         </div>
 
         {/* Users Table */}
-        <div className="rounded-xl bg-white shadow-sm">
-
-          <div className="border-b border-gray-200 p-6">
-            <h2 className="text-xl font-semibold">
-              Users
-            </h2>
+        <div className="rounded-xl bg-card shadow-sm">
+          <div className="border-b border-border p-6">
+            <h2 className="text-xl font-semibold text-foreground">Users</h2>
           </div>
 
           {loading ? (
-            <div className="p-6 text-gray-500">
-              Loading users...
-            </div>
+            <div className="p-6 text-muted-foreground">Loading users...</div>
           ) : users.length === 0 ? (
-            <div className="p-6 text-gray-500">
-              No users found.
-            </div>
+            <div className="p-6 text-muted-foreground">No users found.</div>
           ) : (
             <div className="overflow-x-auto">
-
               <table className="w-full text-left text-sm">
-
-                <thead className="border-b bg-gray-50">
+                <thead className="border-b bg-muted">
                   <tr>
+                    <th className="px-6 py-4 font-semibold">Name</th>
 
-                    <th className="px-6 py-4 font-semibold">
-                      Name
-                    </th>
+                    <th className="px-6 py-4 font-semibold">Email</th>
 
-                    <th className="px-6 py-4 font-semibold">
-                      Email
-                    </th>
+                    <th className="px-6 py-4 font-semibold">Role</th>
 
-                    <th className="px-6 py-4 font-semibold">
-                      Role
-                    </th>
+                    <th className="px-6 py-4 font-semibold">Department</th>
 
-                    <th className="px-6 py-4 font-semibold">
-                      Department
-                    </th>
+                    <th className="px-6 py-4 font-semibold">Status</th>
 
-                    <th className="px-6 py-4 font-semibold">
-                      Status
-                    </th>
-
-                    <th className="px-6 py-4 font-semibold">
-                      Actions
-                    </th>
-
+                    <th className="px-6 py-4 font-semibold">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody>
-
                   {users.map((user) => (
-                    <tr
-                      key={user._id}
-                      className="border-b last:border-b-0"
-                    >
+                    <tr key={user._id} className="border-b last:border-b-0">
+                      <td className="px-6 py-4">{user.name}</td>
+
+                      <td className="px-6 py-4">{user.email}</td>
+
+                      <td className="px-6 py-4">{user.role}</td>
 
                       <td className="px-6 py-4">
-                        {user.name}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {user.email}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {user.role}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {user.departmentName ||
-                          '—'}
+                        {user.departmentName || "—"}
                       </td>
 
                       <td className="px-6 py-4">
                         <span
                           className={
-                            user.isActive
-                              ? 'text-green-600'
-                              : 'text-red-600'
+                            user.isActive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           }
                         >
-                          {user.isActive
-                            ? 'Active'
-                            : 'Inactive'}
+                          {user.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
 
                       <td className="px-6 py-4">
-
                         <div className="flex gap-2">
-
                           <button
                             type="button"
-                            onClick={() =>
-                              handleEdit(user)
-                            }
-                            className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+                            onClick={() => handleEdit(user)}
+                            className="rounded-md border border-input px-3 py-1.5 hover:bg-accent"
                           >
                             Edit
                           </button>
 
                           <button
                             type="button"
-                            onClick={() =>
-                              handleToggleActive(
-                                user
-                              )
-                            }
-                            className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+                            onClick={() => handleToggleActive(user)}
+                            className="rounded-md border border-input px-3 py-1.5 hover:bg-accent"
                           >
-                            {user.isActive
-                              ? 'Disable'
-                              : 'Enable'}
+                            {user.isActive ? "Disable" : "Enable"}
                           </button>
-
                         </div>
-
                       </td>
-
                     </tr>
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
           )}
-
         </div>
-
       </div>
     </div>
-  )
+  );
 }
 
-export default ManageUsers
+export default ManageUsers;
