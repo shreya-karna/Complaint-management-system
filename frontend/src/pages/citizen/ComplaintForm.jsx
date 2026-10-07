@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { containsVulgarWords } from "@/utils/contentFilter";
 
 import {
   ArrowLeft,
@@ -516,7 +517,7 @@ function ComplaintForm() {
   // Validation
   // --------------------------------------------------
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors = {};
 
     if (!formData.title.trim()) {
@@ -529,6 +530,11 @@ function ComplaintForm() {
 
     if (!formData.description.trim()) {
       newErrors.description = "Complaint description is required.";
+    }
+
+    if (formData.description && containsVulgarWords(formData.description)) {
+      newErrors.description =
+        "Please remove vulgar or inappropriate language from the description.";
     }
 
     if (!formData.province) {
@@ -547,6 +553,27 @@ function ComplaintForm() {
       newErrors.ward = "Ward is required.";
     }
 
+    // Stop here if basic validation already found errors
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return false;
+    }
+
+    // AI moderation
+    try {
+      const moderationResult = await moderateComplaint(formData.description);
+
+      if (!moderationResult.allowed) {
+        newErrors.description =
+          "Please remove vulgar or abusive language from the description.";
+      }
+    } catch (error) {
+      console.error("AI moderation failed:", error);
+
+      newErrors.description =
+        "Unable to verify the description right now. Please try again.";
+    }
+
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
@@ -559,7 +586,7 @@ function ComplaintForm() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!validateForm()) {
+    if (!(await validateForm())) {
       return;
     }
 

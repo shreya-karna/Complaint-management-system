@@ -147,7 +147,7 @@ export const createUser = async (req, res) => {
 
       email: email.toLowerCase().trim(),
 
-      isEmailVerified: false,
+      isEmailVerified: true,
       emailVerificationToken,
       emailVerificationExpires,
 
@@ -552,13 +552,13 @@ export const loginUser = async (req, res) => {
     }
 
     // Check email verification
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        success: false,
-        message:
-          'Please verify your email before logging in.',
-      })
-    }
+    // if (!user.isEmailVerified) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message:
+    //       'Please verify your email before logging in.',
+    //   })
+    // }
 
     // Create JWT token
     const token = jwt.sign(

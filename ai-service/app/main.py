@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.categorizer import categorize
 from app.duplicate import find_duplicate
@@ -8,8 +8,19 @@ from app.summarizer import summarize
 import base64
 from fastapi import FastAPI, HTTPException      
 from app.image_categorizer import categorize_image
+from app.moderation import moderate_text
 
 app = FastAPI(title="Complaint AI Service")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Cat(BaseModel):
     id: str
@@ -41,6 +52,9 @@ class AnalyzeIn(BaseModel):
     address: str = ""
     candidates: list[Candidate] = []
 
+class ModerateIn(BaseModel):
+    text: str
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -68,3 +82,9 @@ def analyze(body: AnalyzeIn):
     pri = score_priority(body.text, upvotes)
     return {"duplicate": dup, **pri,
             "summary": summarize(body.text, body.category, body.address)}
+
+@app.post("/moderate")
+def moderate(body: ModerateIn):
+    result = moderate_text(body.text)
+
+    return  result
