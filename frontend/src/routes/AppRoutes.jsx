@@ -19,6 +19,7 @@ import PublicComplaints from '../pages/citizen/PublicComplaints'
 import StaffDashboard from '../pages/staff/StaffDashboard'
 import AssignedComplaints from '../pages/staff/AssignedComplaints'
 import StaffComplaintDetails from '../pages/staff/StaffComplaintDetails'
+import StaffNotifications from '../pages/staff/StaffNotifications'
 
 import AdminDashboard from '../pages/admin/AdminDashboard'
 import ManageUsers from '../pages/admin/ManageUsers'
@@ -26,6 +27,7 @@ import ManageDepartments from '../pages/admin/ManageDepartments'
 import ManageCategories from '../pages/admin/ManageCategories'
 import AdminComplaints from '../pages/admin/AdminComplaints'
 import AdminComplaintDetails from '../pages/admin/AdminComplaintDetails'
+import AdminDuplicateComplaints from '../pages/admin/AdminDuplicateComplaints'
 
 function AppRoutes() {
   return (
@@ -33,8 +35,16 @@ function AppRoutes() {
       <Routes>
 
         {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
+
+        <Route
+          path="/register"
+          element={<Register />}
+        />
+
         <Route
           path="/verify-email/:token"
           element={<VerifyEmail />}
@@ -49,7 +59,10 @@ function AppRoutes() {
               />
             }
           >
-            <Route path="/" element={<CitizenDashboard />} />
+            <Route
+              path="/"
+              element={<CitizenDashboard />}
+            />
 
             <Route
               path="/select-department"
@@ -111,6 +124,11 @@ function AppRoutes() {
               path="/staff/complaints/:id"
               element={<StaffComplaintDetails />}
             />
+
+            <Route
+              path="/staff/notifications"
+              element={<StaffNotifications />}
+            />
           </Route>
         </Route>
 
@@ -146,6 +164,11 @@ function AppRoutes() {
             <Route
               path="/admin/complaints"
               element={<AdminComplaints />}
+            />
+
+            <Route
+              path="/admin/complaints/duplicates"
+              element={<AdminDuplicateComplaints />}
             />
 
             <Route

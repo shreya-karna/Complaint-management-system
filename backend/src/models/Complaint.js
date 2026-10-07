@@ -91,10 +91,14 @@ const complaintSchema = new mongoose.Schema(
         'CLOSED',
         'REJECTED',
         'REOPENED',
+        'DUPLICATE',
       ],
       default: 'SUBMITTED',
     },
 
+    // ===== PRIORITY =====
+
+    // Current operational priority
     priority: {
       type: String,
       enum: [
@@ -105,6 +109,35 @@ const complaintSchema = new mongoose.Schema(
       ],
       default: 'MEDIUM',
     },
+
+    // Original priority recommended by AI
+    aiPriority: {
+      type: String,
+      enum: [
+        'LOW',
+        'MEDIUM',
+        'HIGH',
+        'CRITICAL',
+      ],
+      default: null,
+    },
+
+    // Numeric score calculated by the AI priority model
+    aiPriorityScore: {
+      type: Number,
+      default: null,
+    },
+
+    // Indicates who currently controls the priority
+    // AI = original AI recommendation is being used
+    // ADMIN = admin manually changed the priority
+    prioritySource: {
+      type: String,
+      enum: ['AI', 'ADMIN'],
+      default: 'AI',
+    },
+
+    // ===== END PRIORITY =====
 
     attachments: [
       {
@@ -152,10 +185,18 @@ const complaintSchema = new mongoose.Schema(
       },
     ],
 
-    // ===== AI & MAP FIELDS (added for AI/Maps integration) =====
+    // ===== AI & MAP FIELDS =====
+
     coordinates: {
-      lat: { type: Number, default: null },
-      lng: { type: Number, default: null },
+      lat: {
+        type: Number,
+        default: null,
+      },
+
+      lng: {
+        type: Number,
+        default: null,
+      },
     },
 
     aiSummary: {
@@ -183,13 +224,11 @@ const complaintSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-
   },
   {
     timestamps: true,
   }
 )
-
 
 const Complaint = mongoose.model(
   'Complaint',
