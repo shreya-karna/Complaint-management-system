@@ -128,10 +128,21 @@ body,
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    @apply text-foreground;
+    background-color: #f3f6fc;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% -10%, rgba(59, 130, 246, 0.12), transparent),
+      radial-gradient(ellipse 60% 45% at 90% 110%, rgba(99, 102, 241, 0.10), transparent);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-color: #0a0f1e;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% -10%, rgba(37, 99, 235, 0.30), transparent),
+      radial-gradient(ellipse 60% 45% at 90% 110%, rgba(79, 70, 229, 0.26), transparent);
   }
 }

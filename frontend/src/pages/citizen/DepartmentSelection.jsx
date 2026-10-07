@@ -1,73 +1,73 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Building2, ChevronRight } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Building2, ChevronRight, ChevronLeft } from "lucide-react";
 
-import { Button } from '@/components/ui/button'
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
+} from "@/components/ui/card";
 
-import { getDepartments } from '@/services/departmentService'
+import { getDepartments } from "@/services/departmentService";
 
 function DepartmentSelection() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const [departments, setDepartments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        setLoading(true)
-        setError('')
+        setLoading(true);
+        setError("");
 
-        const response = await getDepartments()
+        const response = await getDepartments();
 
-        const activeDepartments = (
-          response.departments || []
-        ).filter(
-          (department) => department.isActive === true
-        )
+        const activeDepartments = (response.departments || []).filter(
+          (department) => department.isActive === true,
+        );
 
-        setDepartments(activeDepartments)
+        setDepartments(activeDepartments);
       } catch (error) {
-        console.error(
-          'Failed to load departments:',
-          error
-        )
+        console.error("Failed to load departments:", error);
 
-        setError(
-          'Failed to load departments. Please try again.'
-        )
+        setError("Failed to load departments. Please try again.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadDepartments()
-  }, [])
+    loadDepartments();
+  }, []);
 
   const handleDepartmentSelect = (department) => {
-    navigate('/submit-complaint', {
+    navigate("/submit-complaint", {
       state: {
         department: {
           id: department._id,
           name: department.name,
-          description: department.description || '',
+          description: department.description || "",
         },
       },
-    })
-  }
+    });
+  };
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb] px-4 py-10">
+    <main className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8">
+          <button
+            onClick={() => navigate("/")}
+            className="mb-6 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-200/60 hover:text-foreground dark:hover:bg-slate-800"
+          >
+            <ChevronLeft className="size-4" />
+            Back to Dashboard
+          </button>
           <p className="mb-2 text-sm font-medium text-muted-foreground">
             Submit a Complaint
           </p>
@@ -77,8 +77,8 @@ function DepartmentSelection() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Choose the department responsible for handling your complaint.
-            You will provide the complaint details on the next step.
+            Choose the department responsible for handling your complaint. You
+            will provide the complaint details on the next step.
           </p>
         </div>
 
@@ -89,70 +89,56 @@ function DepartmentSelection() {
         )}
 
         {!loading && error && (
-          <div className="py-10 text-center text-red-600">
-            {error}
+          <div className="py-10 text-center text-red-600">{error}</div>
+        )}
+
+        {!loading && !error && departments.length === 0 && (
+          <div className="py-10 text-center text-muted-foreground">
+            No departments are currently available.
           </div>
         )}
 
-        {!loading &&
-          !error &&
-          departments.length === 0 && (
-            <div className="py-10 text-center text-muted-foreground">
-              No departments are currently available.
-            </div>
-          )}
-
-        {!loading &&
-          !error &&
-          departments.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {departments.map((department) => (
-                <Card
-                  key={department._id}
-                  className="cursor-pointer transition-shadow hover:shadow-md"
-                  onClick={() =>
-                    handleDepartmentSelect(department)
-                  }
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
-                        <Building2 className="size-5 text-primary" />
-                      </div>
-
-                      <ChevronRight className="size-5 text-muted-foreground" />
+        {!loading && !error && departments.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {departments.map((department) => (
+              <Card
+                key={department._id}
+                className="cursor-pointer transition-shadow hover:shadow-md"
+                onClick={() => handleDepartmentSelect(department)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+                      <Building2 className="size-5 text-primary" />
                     </div>
 
-                    <CardTitle className="mt-4">
-                      {department.name}
-                    </CardTitle>
+                    <ChevronRight className="size-5 text-muted-foreground" />
+                  </div>
 
-                    <CardDescription>
-                      {department.description}
-                    </CardDescription>
-                  </CardHeader>
+                  <CardTitle className="mt-4">{department.name}</CardTitle>
 
-                  <CardContent>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        handleDepartmentSelect(
-                          department
-                        )
-                      }}
-                    >
-                      Select Department
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  <CardDescription>{department.description}</CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDepartmentSelect(department);
+                    }}
+                  >
+                    Select Department
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </main>
-  )
+  );
 }
 
-export default DepartmentSelection
+export default DepartmentSelection;

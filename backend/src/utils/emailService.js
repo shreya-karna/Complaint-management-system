@@ -1,20 +1,62 @@
 import 'dotenv/config'
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-})
+// Local development: Gmail through nodemailer (used when BREVO_API_KEY is not set).
+// Deployed on Render: Brevo HTTPS API (used when BREVO_API_KEY is set).
 
-export const sendVerificationEmail = async (
-  to,
-  verificationUrl
-) => {
-  await transporter.sendMail({
+let gmailTransporter = null
+
+const getGmailTransporter = () => {
+  if (!gmailTransporter) {
+    gmailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_APP_PASSWORD,
+      },
+    })
+  }
+  return gmailTransporter
+}
+
+const sendEmail = async ({ to, subject, html }) => {
+  if (process.env.BREVO_API_KEY) {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'Complaint Management System',
+          email: process.env.EMAIL_FROM,
+        },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        `Email failed: ${response.status} ${await response.text()}`
+      )
+    }
+    return
+  }
+
+  await getGmailTransporter().sendMail({
     from: `"Complaint Management System" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  })
+}
+
+export const sendVerificationEmail = async (to, verificationUrl) => {
+  await sendEmail({
     to,
     subject: 'Verify your email address',
     html: `
