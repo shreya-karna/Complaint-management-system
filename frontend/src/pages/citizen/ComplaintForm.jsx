@@ -221,6 +221,191 @@ function ComplaintForm() {
     }));
   };
 
+ const handleLocationDetected = ({
+  lat,
+  lng,
+  address,
+  geoAddress,
+}) => {
+  console.log("Detected location:", geoAddress);
+
+  setLoc({
+    lat,
+    lng,
+    address,
+    geoAddress,
+  });
+
+  const normalize = (value = "") =>
+    value
+      .toLowerCase()
+      .replace(/\b(pradesh|province)\b/g, "")
+      .replace(
+        /\b(municipality|metropolitan city|metropolitan|sub-metropolitan city|sub-metropolitan|rural municipality)\b/g,
+        "",
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+
+  // -------------------------
+  // Province
+  // -------------------------
+
+  const detectedProvince = normalize(
+  geoAddress.state || "",
+);
+
+const provinceNameMap = {
+  bagamati: "bagmati",
+};
+
+const normalizedProvince =
+  provinceNameMap[detectedProvince] ||
+  detectedProvince;
+
+const province = provinces.find(
+  (item) =>
+    normalize(item.name_en) === normalizedProvince,
+);
+
+console.log(
+  "Detected province:",
+  detectedProvince,
+);
+
+console.log(
+  "Matched province:",
+  province,
+);
+
+if (!province) {
+  console.log(
+    "Could not match province:",
+    detectedProvince,
+  );
+  return;
+}
+
+  // -------------------------
+  // District
+  // -------------------------
+
+  const detectedDistrict = normalize(
+    geoAddress.county ||
+      geoAddress.state_district ||
+      geoAddress.district ||
+      "",
+  );
+
+  const district = districts.find(
+    (item) =>
+      item.province_code === province.code &&
+      normalize(item.name_en) === detectedDistrict,
+  );
+
+  console.log("Detected district:", detectedDistrict);
+  console.log("Matched district:", district);
+
+  if (!district) {
+    console.log(
+      "Could not match district:",
+      detectedDistrict,
+    );
+
+    setFormData((previous) => ({
+      ...previous,
+      province: province.code,
+      district: "",
+      municipality: "",
+      ward: "",
+      tole: geoAddress.suburb || "",
+    }));
+
+    return;
+  }
+
+  // -------------------------
+  // Municipality
+  // -------------------------
+
+  const detectedMunicipality = normalize(
+    geoAddress.municipality ||
+      geoAddress.town ||
+      geoAddress.city ||
+      "",
+  );
+
+  const municipality = localLevels.find(
+    (item) =>
+      item.district_code === district.code &&
+      normalize(item.name_en) === detectedMunicipality,
+  );
+
+  console.log(
+    "Detected municipality:",
+    detectedMunicipality,
+  );
+
+  console.log(
+    "Matched municipality:",
+    municipality,
+  );
+
+  // -------------------------
+  // Ward
+  // -------------------------
+
+  let detectedWard = "";
+
+  if (geoAddress.city_district) {
+    const wardMatch =
+      geoAddress.city_district.match(/\d+/);
+
+    if (wardMatch) {
+      detectedWard = wardMatch[0];
+    }
+  }
+
+  // -------------------------
+  // Tole
+  // -------------------------
+
+  const detectedTole =
+    geoAddress.suburb ||
+    geoAddress.neighbourhood ||
+    geoAddress.road ||
+    "";
+
+  // -------------------------
+  // Fill form
+  // -------------------------
+
+  setFormData((previous) => ({
+    ...previous,
+
+    province: province.code,
+
+    district: district.code,
+
+    municipality: municipality
+      ? municipality.name_en
+      : "",
+
+    ward: detectedWard,
+
+    tole: detectedTole,
+  }));
+
+  // Clear validation errors
+  setErrors((previous) => ({
+    ...previous,
+    province: "",
+    district: "",
+    municipality: "",
+    ward: "",
+  }));
+};
+
   // --------------------------------------------------
   // Normal input change
   // --------------------------------------------------
@@ -518,7 +703,38 @@ function ComplaintForm() {
                 )}
               </div>
 
+            
               {/* -------------------------------- */}
+              {/* Description */}
+              {/* -------------------------------- */}
+
+              <div>
+                <label
+                  htmlFor="description"
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                >
+                  Description
+                </label>
+
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  onBlur={handleDescriptionBlur}
+                  rows={6}
+                  placeholder="Describe the issue in detail"
+                  className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+
+                {errors.description && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.description}
+                  </p>
+                )}
+              </div>
+
+                {/* -------------------------------- */}
               {/* Category */}
               {/* -------------------------------- */}
 
@@ -586,39 +802,26 @@ function ComplaintForm() {
                 )}
               </div>
 
-              {/* -------------------------------- */}
-              {/* Description */}
-              {/* -------------------------------- */}
-
-              <div>
-                <label
-                  htmlFor="description"
-                  className="mb-2 block text-sm font-medium text-slate-700"
-                >
-                  Description
-                </label>
-
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  onBlur={handleDescriptionBlur}
-                  rows={6}
-                  placeholder="Describe the issue in detail"
-                  className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-
-                {errors.description && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.description}
-                  </p>
-                )}
-              </div>
 
               {/* -------------------------------- */}
               {/* Location */}
               {/* -------------------------------- */}
+
+                            {/* Map pin */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Pin exact location on map
+                  <span className="ml-1 text-xs font-normal text-slate-400">
+                    (Recommended)
+                  </span>
+                </label>
+
+                <LocationPicker
+  value={loc}
+  onChange={setLoc}
+  onLocationDetected={handleLocationDetected}
+/>
+              </div>
 
               <div className="space-y-4">
                 <h3 className="text-base font-semibold text-slate-900">
@@ -794,17 +997,7 @@ function ComplaintForm() {
 
               {/* -------------------------------- */}
 
-              {/* Map pin */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Pin exact location on map
-                  <span className="ml-1 text-xs font-normal text-slate-400">
-                    (Recommended)
-                  </span>
-                </label>
 
-                <LocationPicker value={loc} onChange={setLoc} />
-              </div>
 
               {/* Attachments */}
               {/* -------------------------------- */}
