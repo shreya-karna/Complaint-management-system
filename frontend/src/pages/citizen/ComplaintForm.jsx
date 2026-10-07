@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   ArrowLeft,
   FileText,
   Image as ImageIcon,
+  Loader2,
+  Sparkles,
   Upload,
   X,
 } from "lucide-react";
@@ -12,7 +14,11 @@ import {
 import { createComplaint } from "@/services/complaintService";
 import { getCategories } from "@/services/categoryService";
 import LocationPicker from "@/components/LocationPicker";
-import { suggestCategory } from "@/services/aiServices";
+import {
+  suggestCategory,
+  suggestCategoryFromImage,
+} from "@/services/aiServices";
+import { downscaleImage } from "@/lib/imageUtils";
 
 import provinces from "@/data/provinces.json";
 import districts from "@/data/districts.json";
@@ -57,6 +63,11 @@ function ComplaintForm() {
   const [availableDistricts, setAvailableDistricts] = useState([]);
 
   const [availableMunicipalities, setAvailableMunicipalities] = useState([]);
+
+  const [imageSuggestion, setImageSuggestion] = useState(null);
+  const [imageAnalyzing, setImageAnalyzing] = useState(false);
+  const imageRequestId = useRef(0);
+  const imageSourceFile = useRef(null);
 
   // Ward numbers available in the dropdown.
   // localLevels.json does not contain ward data.
@@ -221,190 +232,154 @@ function ComplaintForm() {
     }));
   };
 
- const handleLocationDetected = ({
-  lat,
-  lng,
-  address,
-  geoAddress,
-}) => {
-  console.log("Detected location:", geoAddress);
+  const handleLocationDetected = ({ lat, lng, address, geoAddress }) => {
+    console.log("Detected location:", geoAddress);
 
-  setLoc({
-    lat,
-    lng,
-    address,
-    geoAddress,
-  });
+    setLoc({
+      lat,
+      lng,
+      address,
+      geoAddress,
+    });
 
-  const normalize = (value = "") =>
-    value
-      .toLowerCase()
-      .replace(/\b(pradesh|province)\b/g, "")
-      .replace(
-        /\b(municipality|metropolitan city|metropolitan|sub-metropolitan city|sub-metropolitan|rural municipality)\b/g,
-        "",
-      )
-      .replace(/\s+/g, " ")
-      .trim();
+    const normalize = (value = "") =>
+      value
+        .toLowerCase()
+        .replace(/\b(pradesh|province)\b/g, "")
+        .replace(
+          /\b(municipality|metropolitan city|metropolitan|sub-metropolitan city|sub-metropolitan|rural municipality)\b/g,
+          "",
+        )
+        .replace(/\s+/g, " ")
+        .trim();
 
-  // -------------------------
-  // Province
-  // -------------------------
+    // -------------------------
+    // Province
+    // -------------------------
 
-  const detectedProvince = normalize(
-  geoAddress.state || "",
-);
+    const detectedProvince = normalize(geoAddress.state || "");
 
-const provinceNameMap = {
-  bagamati: "bagmati",
-};
+    const provinceNameMap = {
+      bagamati: "bagmati",
+    };
 
-const normalizedProvince =
-  provinceNameMap[detectedProvince] ||
-  detectedProvince;
+    const normalizedProvince =
+      provinceNameMap[detectedProvince] || detectedProvince;
 
-const province = provinces.find(
-  (item) =>
-    normalize(item.name_en) === normalizedProvince,
-);
-
-console.log(
-  "Detected province:",
-  detectedProvince,
-);
-
-console.log(
-  "Matched province:",
-  province,
-);
-
-if (!province) {
-  console.log(
-    "Could not match province:",
-    detectedProvince,
-  );
-  return;
-}
-
-  // -------------------------
-  // District
-  // -------------------------
-
-  const detectedDistrict = normalize(
-    geoAddress.county ||
-      geoAddress.state_district ||
-      geoAddress.district ||
-      "",
-  );
-
-  const district = districts.find(
-    (item) =>
-      item.province_code === province.code &&
-      normalize(item.name_en) === detectedDistrict,
-  );
-
-  console.log("Detected district:", detectedDistrict);
-  console.log("Matched district:", district);
-
-  if (!district) {
-    console.log(
-      "Could not match district:",
-      detectedDistrict,
+    const province = provinces.find(
+      (item) => normalize(item.name_en) === normalizedProvince,
     );
+
+    console.log("Detected province:", detectedProvince);
+
+    console.log("Matched province:", province);
+
+    if (!province) {
+      console.log("Could not match province:", detectedProvince);
+      return;
+    }
+
+    // -------------------------
+    // District
+    // -------------------------
+
+    const detectedDistrict = normalize(
+      geoAddress.county ||
+        geoAddress.state_district ||
+        geoAddress.district ||
+        "",
+    );
+
+    const district = districts.find(
+      (item) =>
+        item.province_code === province.code &&
+        normalize(item.name_en) === detectedDistrict,
+    );
+
+    console.log("Detected district:", detectedDistrict);
+    console.log("Matched district:", district);
+
+    if (!district) {
+      console.log("Could not match district:", detectedDistrict);
+
+      setFormData((previous) => ({
+        ...previous,
+        province: province.code,
+        district: "",
+        municipality: "",
+        ward: "",
+        tole: geoAddress.suburb || "",
+      }));
+
+      return;
+    }
+
+    // -------------------------
+    // Municipality
+    // -------------------------
+
+    const detectedMunicipality = normalize(
+      geoAddress.municipality || geoAddress.town || geoAddress.city || "",
+    );
+
+    const municipality = localLevels.find(
+      (item) =>
+        item.district_code === district.code &&
+        normalize(item.name_en) === detectedMunicipality,
+    );
+
+    console.log("Detected municipality:", detectedMunicipality);
+
+    console.log("Matched municipality:", municipality);
+
+    // -------------------------
+    // Ward
+    // -------------------------
+
+    let detectedWard = "";
+
+    if (geoAddress.city_district) {
+      const wardMatch = geoAddress.city_district.match(/\d+/);
+
+      if (wardMatch) {
+        detectedWard = wardMatch[0];
+      }
+    }
+
+    // -------------------------
+    // Tole
+    // -------------------------
+
+    const detectedTole =
+      geoAddress.suburb || geoAddress.neighbourhood || geoAddress.road || "";
+
+    // -------------------------
+    // Fill form
+    // -------------------------
 
     setFormData((previous) => ({
       ...previous,
+
       province: province.code,
+
+      district: district.code,
+
+      municipality: municipality ? municipality.name_en : "",
+
+      ward: detectedWard,
+
+      tole: detectedTole,
+    }));
+
+    // Clear validation errors
+    setErrors((previous) => ({
+      ...previous,
+      province: "",
       district: "",
       municipality: "",
       ward: "",
-      tole: geoAddress.suburb || "",
     }));
-
-    return;
-  }
-
-  // -------------------------
-  // Municipality
-  // -------------------------
-
-  const detectedMunicipality = normalize(
-    geoAddress.municipality ||
-      geoAddress.town ||
-      geoAddress.city ||
-      "",
-  );
-
-  const municipality = localLevels.find(
-    (item) =>
-      item.district_code === district.code &&
-      normalize(item.name_en) === detectedMunicipality,
-  );
-
-  console.log(
-    "Detected municipality:",
-    detectedMunicipality,
-  );
-
-  console.log(
-    "Matched municipality:",
-    municipality,
-  );
-
-  // -------------------------
-  // Ward
-  // -------------------------
-
-  let detectedWard = "";
-
-  if (geoAddress.city_district) {
-    const wardMatch =
-      geoAddress.city_district.match(/\d+/);
-
-    if (wardMatch) {
-      detectedWard = wardMatch[0];
-    }
-  }
-
-  // -------------------------
-  // Tole
-  // -------------------------
-
-  const detectedTole =
-    geoAddress.suburb ||
-    geoAddress.neighbourhood ||
-    geoAddress.road ||
-    "";
-
-  // -------------------------
-  // Fill form
-  // -------------------------
-
-  setFormData((previous) => ({
-    ...previous,
-
-    province: province.code,
-
-    district: district.code,
-
-    municipality: municipality
-      ? municipality.name_en
-      : "",
-
-    ward: detectedWard,
-
-    tole: detectedTole,
-  }));
-
-  // Clear validation errors
-  setErrors((previous) => ({
-    ...previous,
-    province: "",
-    district: "",
-    municipality: "",
-    ward: "",
-  }));
-};
+  };
 
   // --------------------------------------------------
   // Normal input change
@@ -422,6 +397,44 @@ if (!province) {
       ...previous,
       [name]: "",
     }));
+  };
+
+  const analyzeImage = async (file) => {
+    if (!department?.id) return;
+
+    const requestId = ++imageRequestId.current;
+    imageSourceFile.current = file;
+    setImageAnalyzing(true);
+    setImageSuggestion(null);
+
+    try {
+      const smallImage = await downscaleImage(file);
+
+      const result = await suggestCategoryFromImage({
+        departmentId: department.id,
+        image: smallImage,
+        text: formData.description,
+      });
+
+      if (requestId !== imageRequestId.current) return;
+
+      if (result?.category && !result.needs_review) {
+        setImageSuggestion(result);
+
+        setFormData((previous) =>
+          previous.category
+            ? previous
+            : { ...previous, category: result.category },
+        );
+        setErrors((previous) => ({ ...previous, category: "" }));
+      }
+    } catch (error) {
+      console.error("Image categorization failed:", error);
+    } finally {
+      if (requestId === imageRequestId.current) {
+        setImageAnalyzing(false);
+      }
+    }
   };
 
   // --------------------------------------------------
@@ -465,6 +478,16 @@ if (!province) {
 
     setFiles((previous) => [...previous, ...validFiles]);
 
+    const firstImage = validFiles.find((file) =>
+      ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(
+        file.type,
+      ),
+    );
+
+    if (firstImage) {
+      analyzeImage(firstImage);
+    }
+
     if (validFiles.length > 0) {
       setErrors((previous) => ({
         ...previous,
@@ -476,6 +499,14 @@ if (!province) {
   };
 
   const removeFile = (index) => {
+    if (imageSourceFile.current === files[index]) {
+      imageRequestId.current++;
+      imageSourceFile.current = null;
+      setImageSuggestion(null);
+      setImageAnalyzing(false);
+    }
+    // END OF NEW BLOCK
+
     setFiles((previous) =>
       previous.filter((_, fileIndex) => fileIndex !== index),
     );
@@ -680,7 +711,6 @@ if (!province) {
               {/* -------------------------------- */}
               {/* Title */}
               {/* -------------------------------- */}
-
               <div>
                 <label
                   htmlFor="title"
@@ -702,12 +732,9 @@ if (!province) {
                   <p className="mt-1 text-sm text-red-600">{errors.title}</p>
                 )}
               </div>
-
-            
               {/* -------------------------------- */}
               {/* Description */}
               {/* -------------------------------- */}
-
               <div>
                 <label
                   htmlFor="description"
@@ -734,10 +761,136 @@ if (!province) {
                 )}
               </div>
 
-                {/* -------------------------------- */}
+              {/* -------------------------------- */}
+              {/* Attachments */}
+              {/* -------------------------------- */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Attachments
+                </label>
+
+                <label
+                  htmlFor="attachments"
+                  className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50"
+                >
+                  <Upload className="mb-3 h-8 w-8 text-slate-400" />
+
+                  <p className="font-medium text-slate-700">
+                    Add a photo of the issue
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    We'll detect the category automatically ·
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    JPG, PNG, WEBP, GIF or PDF · Maximum 10MB per file
+                  </p>
+
+                  <input
+                    id="attachments"
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {errors.files && (
+                  <p className="mt-2 text-sm text-red-600">{errors.files}</p>
+                )}
+
+                {files.length > 0 && (
+                  <div className="mt-5 space-y-4">
+                    <p className="text-sm font-semibold text-slate-700">
+                      Attachment Preview
+                    </p>
+
+                    {files.map((file, index) => {
+                      const previewUrl = URL.createObjectURL(file);
+
+                      const isImage = file.type.startsWith("image/");
+
+                      const isPdf = file.type === "application/pdf";
+
+                      return (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="overflow-hidden rounded-lg border bg-white"
+                        >
+                          {isImage && (
+                            <div className="flex max-h-80 items-center justify-center bg-slate-100 p-3">
+                              <img
+                                src={previewUrl}
+                                alt={file.name}
+                                className="max-h-72 max-w-full rounded-md object-contain"
+                              />
+                            </div>
+                          )}
+
+                          {isPdf && (
+                            <div className="bg-slate-100 p-3">
+                              <iframe
+                                src={previewUrl}
+                                title={file.name}
+                                className="h-80 w-full rounded-md border bg-white"
+                              />
+                            </div>
+                          )}
+
+                          {!isImage && !isPdf && (
+                            <div className="flex items-center gap-3 bg-slate-50 p-5">
+                              <FileText className="h-10 w-10 text-slate-500" />
+
+                              <div>
+                                <p className="font-medium text-slate-900">
+                                  {file.name}
+                                </p>
+
+                                <p className="text-sm text-slate-500">
+                                  {file.type}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between gap-4 border-t p-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                              {isImage ? (
+                                <ImageIcon className="h-5 w-5 shrink-0 text-blue-500" />
+                              ) : (
+                                <FileText className="h-5 w-5 shrink-0 text-slate-500" />
+                              )}
+
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-slate-900">
+                                  {file.name}
+                                </p>
+
+                                <p className="text-xs text-slate-500">
+                                  {(file.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="shrink-0 rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                              title="Remove file"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* -------------------------------- */}
               {/* Category */}
               {/* -------------------------------- */}
-
               <div>
                 <label
                   htmlFor="category"
@@ -800,14 +953,53 @@ if (!province) {
                     </button>
                   </p>
                 )}
+
+                {/* ===== PASTE THE NEW BLOCK HERE ===== */}
+                {imageAnalyzing && (
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Detecting category from your photo...
+                  </p>
+                )}
+
+                {imageSuggestion &&
+                  !imageAnalyzing &&
+                  (formData.category === imageSuggestion.category ? (
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-emerald-600">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Detected from your photo:{" "}
+                      <b>{imageSuggestion.category}</b>
+                      <span className="text-slate-400">
+                        (you can change it)
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-blue-600">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Your photo looks like: <b>{imageSuggestion.category}</b>
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => {
+                          setFormData((previous) => ({
+                            ...previous,
+                            category: imageSuggestion.category,
+                          }));
+                          setErrors((previous) => ({
+                            ...previous,
+                            category: "",
+                          }));
+                        }}
+                      >
+                        Apply
+                      </button>
+                    </p>
+                  ))}
               </div>
-
-
               {/* -------------------------------- */}
               {/* Location */}
               {/* -------------------------------- */}
-
-                            {/* Map pin */}
+              {/* Map pin */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Pin exact location on map
@@ -817,12 +1009,11 @@ if (!province) {
                 </label>
 
                 <LocationPicker
-  value={loc}
-  onChange={setLoc}
-  onLocationDetected={handleLocationDetected}
-/>
+                  value={loc}
+                  onChange={setLoc}
+                  onLocationDetected={handleLocationDetected}
+                />
               </div>
-
               <div className="space-y-4">
                 <h3 className="text-base font-semibold text-slate-900">
                   Complaint Location
@@ -996,148 +1187,16 @@ if (!province) {
               </div>
 
               {/* -------------------------------- */}
-
-
-
-              {/* Attachments */}
-              {/* -------------------------------- */}
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Attachments
-                </label>
-
-                <label
-                  htmlFor="attachments"
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50"
-                >
-                  <Upload className="mb-3 h-8 w-8 text-slate-400" />
-
-                  <p className="font-medium text-slate-700">
-                    Click to attach files
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    JPG, PNG, WEBP, GIF or PDF · Maximum 10MB per file
-                  </p>
-
-                  <input
-                    id="attachments"
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-
-                {errors.files && (
-                  <p className="mt-2 text-sm text-red-600">{errors.files}</p>
-                )}
-
-                {files.length > 0 && (
-                  <div className="mt-5 space-y-4">
-                    <p className="text-sm font-semibold text-slate-700">
-                      Attachment Preview
-                    </p>
-
-                    {files.map((file, index) => {
-                      const previewUrl = URL.createObjectURL(file);
-
-                      const isImage = file.type.startsWith("image/");
-
-                      const isPdf = file.type === "application/pdf";
-
-                      return (
-                        <div
-                          key={`${file.name}-${index}`}
-                          className="overflow-hidden rounded-lg border bg-white"
-                        >
-                          {isImage && (
-                            <div className="flex max-h-80 items-center justify-center bg-slate-100 p-3">
-                              <img
-                                src={previewUrl}
-                                alt={file.name}
-                                className="max-h-72 max-w-full rounded-md object-contain"
-                              />
-                            </div>
-                          )}
-
-                          {isPdf && (
-                            <div className="bg-slate-100 p-3">
-                              <iframe
-                                src={previewUrl}
-                                title={file.name}
-                                className="h-80 w-full rounded-md border bg-white"
-                              />
-                            </div>
-                          )}
-
-                          {!isImage && !isPdf && (
-                            <div className="flex items-center gap-3 bg-slate-50 p-5">
-                              <FileText className="h-10 w-10 text-slate-500" />
-
-                              <div>
-                                <p className="font-medium text-slate-900">
-                                  {file.name}
-                                </p>
-
-                                <p className="text-sm text-slate-500">
-                                  {file.type}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between gap-4 border-t p-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                              {isImage ? (
-                                <ImageIcon className="h-5 w-5 shrink-0 text-blue-500" />
-                              ) : (
-                                <FileText className="h-5 w-5 shrink-0 text-slate-500" />
-                              )}
-
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-slate-900">
-                                  {file.name}
-                                </p>
-
-                                <p className="text-xs text-slate-500">
-                                  {(file.size / 1024).toFixed(1)} KB
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => removeFile(index)}
-                              className="shrink-0 rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                              title="Remove file"
-                            >
-                              <X className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* -------------------------------- */}
               {/* Submit Error */}
               {/* -------------------------------- */}
-
               {errors.submit && (
                 <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {errors.submit}
                 </div>
               )}
-
               {/* -------------------------------- */}
               {/* Submit */}
               {/* -------------------------------- */}
-
               <div className="flex justify-end border-t pt-6">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Submitting..." : "Submit Complaint"}
