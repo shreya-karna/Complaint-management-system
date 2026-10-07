@@ -7,7 +7,10 @@ import { analyzeNewComplaint } from '../services/aiPipeline.js'
 // arrives as an array, which has no .trim().
 const toText = (value) => {
   const first = Array.isArray(value) ? value[0] : value
-  return first === undefined || first === null ? '' : String(first).trim()
+
+  return first === undefined || first === null
+    ? ''
+    : String(first).trim()
 }
 
 const generateComplaintNumber = async () => {
@@ -111,9 +114,13 @@ export const createComplaint = async (req, res) => {
     }
 
     // ===== AI & MAP =====
+
     const latNum = parseFloat(req.body.lat)
     const lngNum = parseFloat(req.body.lng)
-    const hasCoords = Number.isFinite(latNum) && Number.isFinite(lngNum)
+
+    const hasCoords =
+      Number.isFinite(latNum) &&
+      Number.isFinite(lngNum)
 
     const ai = await analyzeNewComplaint({
       text: description.trim(),
@@ -123,6 +130,7 @@ export const createComplaint = async (req, res) => {
       lng: hasCoords ? lngNum : null,
       address: req.body.address || '',
     })
+
     // ===== END AI & MAP =====
 
     const complaintNumber =
@@ -154,13 +162,42 @@ export const createComplaint = async (req, res) => {
       attachments,
 
       // ===== AI & MAP =====
-      coordinates: hasCoords ? { lat: latNum, lng: lngNum } : undefined,
+
+      coordinates: hasCoords
+        ? {
+            lat: latNum,
+            lng: lngNum,
+          }
+        : undefined,
+
       aiSummary: ai?.summary || '',
-      duplicateOf: ai?.duplicate?.duplicate_of || null,
+
+      duplicateOf:
+        ai?.duplicate?.duplicate_of || null,
+
+      // ===== AI PRIORITY =====
+
+      // Current operational priority
+      priority: ai?.priority || 'MEDIUM',
+
+      // Preserve the original AI recommendation
+      aiPriority:
+        ai?.priority || 'MEDIUM',
+
+      // Preserve the AI priority score
+      aiPriorityScore:
+        typeof ai?.score === 'number'
+          ? ai.score
+          : null,
+
+      // New complaints initially use the AI recommendation
+      prioritySource: 'AI',
+
+      // ===== END AI PRIORITY =====
+
       // ===== END AI & MAP =====
 
       status: 'SUBMITTED',
-      priority: ai?.priority || 'MEDIUM',
 
       history: [
         {
@@ -170,10 +207,18 @@ export const createComplaint = async (req, res) => {
       ],
     })
 
+    // If AI detected a possible duplicate,
+    // increase the original complaint's upvote count.
     if (ai?.duplicate) {
       await Complaint.updateOne(
-        { _id: ai.duplicate.duplicate_of },
-        { $inc: { upvoteCount: 1 } }
+        {
+          _id: ai.duplicate.duplicate_of,
+        },
+        {
+          $inc: {
+            upvoteCount: 1,
+          },
+        }
       )
     }
 
@@ -246,7 +291,8 @@ export const getComplaints = async (req, res) => {
     }
 
     if (municipality) {
-      filter['location.municipality'] = municipality
+      filter['location.municipality'] =
+        municipality
     }
 
     if (ward) {
@@ -304,6 +350,7 @@ export const getComplaints = async (req, res) => {
       closed: 0,
       rejected: 0,
       reopened: 0,
+      duplicate: 0,
     }
 
     statistics.total = total
@@ -340,6 +387,10 @@ export const getComplaints = async (req, res) => {
 
         case 'REOPENED':
           statistics.reopened = item.count
+          break
+
+        case 'DUPLICATE':
+          statistics.duplicate = item.count
           break
 
         default:
@@ -491,11 +542,15 @@ export const trackComplaint = async (
   }
 }
 
-export const getComplaintById = async (req, res) => {
+export const getComplaintById = async (
+  req,
+  res
+) => {
   try {
-    const complaint = await Complaint.findById(
-      req.params.id
-    )
+    const complaint =
+      await Complaint.findById(
+        req.params.id
+      )
 
     if (!complaint) {
       return res.status(404).json({
@@ -508,7 +563,7 @@ export const getComplaintById = async (req, res) => {
     if (
       req.user.role === 'CITIZEN' &&
       complaint.userId?.toString() !==
-      req.user.userId.toString()
+        req.user.userId.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -522,7 +577,7 @@ export const getComplaintById = async (req, res) => {
     if (
       req.user.role === 'STAFF' &&
       complaint.departmentId?.toString() !==
-      req.user.departmentId?.toString()
+        req.user.departmentId?.toString()
     ) {
       return res.status(403).json({
         success: false,
@@ -550,7 +605,10 @@ export const getComplaintById = async (req, res) => {
   }
 }
 
-export const updateComplaint = async (req, res) => {
+export const updateComplaint = async (
+  req,
+  res
+) => {
   try {
     const { id } = req.params
 
@@ -597,7 +655,9 @@ export const updateComplaint = async (req, res) => {
       })
     }
 
-    if (!allowedPriorities.includes(priority)) {
+    if (
+      !allowedPriorities.includes(priority)
+    ) {
       return res.status(400).json({
         success: false,
         message: 'Invalid complaint priority.',
@@ -620,7 +680,7 @@ export const updateComplaint = async (req, res) => {
       if (
         !complaint.assignedTo ||
         complaint.assignedTo.toString() !==
-        req.user.userId.toString()
+          req.user.userId.toString()
       ) {
         return res.status(403).json({
           success: false,
@@ -630,10 +690,28 @@ export const updateComplaint = async (req, res) => {
       }
     }
 
-    const previousStatus = complaint.status
+    const previousStatus =
+      complaint.status
+
+    const previousPriority =
+      complaint.priority
 
     complaint.status = status
     complaint.priority = priority
+
+    // If an ADMIN changes the current priority,
+    // record that the current priority was manually
+    // overridden from the original AI recommendation.
+    //
+    // aiPriority and aiPriorityScore are intentionally
+    // preserved so we can always see what AI originally
+    // recommended.
+    if (
+      req.user.role === 'ADMIN' &&
+      priority !== previousPriority
+    ) {
+      complaint.prioritySource = 'ADMIN'
+    }
 
     if (resolution !== undefined) {
       complaint.resolution =
@@ -700,7 +778,75 @@ export const updateComplaint = async (req, res) => {
   }
 }
 
-export const reopenComplaint = async (req, res) => {
+export const updateComplaintPriority = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params
+    const { priority } = req.body
+
+    const allowedPriorities = [
+      'LOW',
+      'MEDIUM',
+      'HIGH',
+      'CRITICAL',
+    ]
+
+    if (!allowedPriorities.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid priority.',
+      })
+    }
+
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message:
+          'Only administrators can override complaint priority.',
+      })
+    }
+
+    const complaint =
+      await Complaint.findById(id)
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.',
+      })
+    }
+
+    complaint.priority = priority
+    complaint.prioritySource = 'ADMIN'
+
+    await complaint.save()
+
+    return res.json({
+      success: true,
+      message:
+        'Complaint priority updated successfully.',
+      complaint,
+    })
+  } catch (error) {
+    console.error(
+      'Update complaint priority error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to update complaint priority.',
+    })
+  }
+}
+
+export const reopenComplaint = async (
+  req,
+  res
+) => {
   try {
     const { id } = req.params
     const { reason } = req.body
@@ -712,7 +858,8 @@ export const reopenComplaint = async (req, res) => {
       })
     }
 
-    const complaint = await Complaint.findById(id)
+    const complaint =
+      await Complaint.findById(id)
 
     if (!complaint) {
       return res.status(404).json({
@@ -748,8 +895,6 @@ export const reopenComplaint = async (req, res) => {
       })
     }
 
-    const previousStatus = complaint.status
-
     complaint.status = 'REOPENED'
 
     complaint.history.push({
@@ -778,7 +923,10 @@ export const reopenComplaint = async (req, res) => {
   }
 }
 
-export const assignComplaint = async (req, res) => {
+export const assignComplaint = async (
+  req,
+  res
+) => {
   try {
     const { id } = req.params
     const { staffId } = req.body
@@ -800,7 +948,16 @@ export const assignComplaint = async (req, res) => {
       })
     }
 
-    const staff = await User.findById(staffId)
+    if (complaint.status === 'DUPLICATE') {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Duplicate complaints cannot be assigned to staff.',
+      })
+    }
+
+    const staff =
+      await User.findById(staffId)
 
     if (!staff) {
       return res.status(404).json({
@@ -828,7 +985,7 @@ export const assignComplaint = async (req, res) => {
     if (
       !staff.departmentId ||
       staff.departmentId.toString() !==
-      complaint.departmentId.toString()
+        complaint.departmentId.toString()
     ) {
       return res.status(400).json({
         success: false,
@@ -874,3 +1031,168 @@ export const assignComplaint = async (req, res) => {
     })
   }
 }
+
+export const markComplaintAsDuplicate = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params
+    const {
+      originalComplaintId,
+      note,
+    } = req.body
+
+    if (!originalComplaintId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Original complaint ID is required.',
+      })
+    }
+
+    if (id === originalComplaintId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'A complaint cannot be a duplicate of itself.',
+      })
+    }
+
+    const complaint =
+      await Complaint.findById(id)
+
+    const originalComplaint =
+      await Complaint.findById(
+        originalComplaintId
+      )
+
+    if (
+      !complaint ||
+      !originalComplaint
+    ) {
+      return res.status(404).json({
+        success: false,
+        message:
+          'Complaint or original complaint not found.',
+      })
+    }
+
+    if (complaint.status === 'DUPLICATE') {
+      return res.status(400).json({
+        success: false,
+        message:
+          'This complaint is already marked as duplicate.',
+      })
+    }
+
+    const previousStatus =
+      complaint.status
+
+    complaint.duplicateOf =
+      originalComplaint._id
+
+    complaint.status = 'DUPLICATE'
+
+    complaint.history.push({
+      status: 'DUPLICATE',
+      note:
+        note?.trim() ||
+        `Admin marked this complaint as a duplicate of ${originalComplaint.complaintNumber}. Previous status: ${previousStatus}.`,
+      changedAt: new Date(),
+    })
+
+    await complaint.save()
+
+    await Notification.create({
+      userId: complaint.userId,
+      type: 'STATUS_UPDATED',
+      title: 'Complaint Marked as Duplicate',
+      message: `Your complaint ${complaint.complaintNumber} has been marked as a duplicate of ${originalComplaint.complaintNumber}.`,
+      complaintId: complaint._id,
+    })
+
+    return res.status(200).json({
+      success: true,
+      message:
+        'Complaint marked as duplicate successfully.',
+      complaint,
+    })
+  } catch (error) {
+    console.error(
+      'Mark complaint as duplicate error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to mark complaint as duplicate.',
+    })
+  }
+}
+
+export const getDuplicateComplaints = async (
+  req,
+  res
+) => {
+  try {
+    const [
+      possibleDuplicates,
+      confirmedDuplicates,
+    ] = await Promise.all([
+      // AI detected these as possible duplicates,
+      // but admin has not confirmed them yet.
+      Complaint.find({
+        duplicateOf: {
+          $exists: true,
+          $ne: null,
+        },
+        status: {
+          $ne: 'DUPLICATE',
+        },
+      })
+        .populate(
+          'duplicateOf',
+          'complaintNumber title'
+        )
+        .populate(
+          'assignedTo',
+          'name employeeId'
+        )
+        .sort({ updatedAt: -1 }),
+
+      // These have already been confirmed by admin.
+      Complaint.find({
+        status: 'DUPLICATE',
+      })
+        .populate(
+          'duplicateOf',
+          'complaintNumber title'
+        )
+        .populate(
+          'assignedTo',
+          'name employeeId'
+        )
+        .sort({ updatedAt: -1 }),
+    ])
+
+    return res.status(200).json({
+      success: true,
+      possibleDuplicates,
+      confirmedDuplicates,
+    })
+  } catch (error) {
+    console.error(
+      'Get duplicate complaints error:',
+      error
+    )
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to fetch duplicate complaints.',
+    })
+  }
+}
+

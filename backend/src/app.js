@@ -9,6 +9,7 @@ import categoryRoutes from './routes/categoryRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
+import feedbackRoutes from './routes/feedbackRoutes.js'
 
 dotenv.config()
 
@@ -25,6 +26,11 @@ app.use('/api/ai', aiRoutes)
 app.use(
   '/uploads',
   express.static('uploads')
+)
+
+app.use(
+  '/api/feedback',
+  feedbackRoutes
 )
 
 app.get('/api/health', (req, res) => {

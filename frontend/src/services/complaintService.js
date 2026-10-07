@@ -32,14 +32,12 @@ export const createComplaint = async ({
   formData.append('ward', ward)
   formData.append('tole', tole || '')
 
-  formData.append('tole', tole || '')
-
   if (lat != null && lng != null) {
     formData.append('lat', lat)
     formData.append('lng', lng)
   }
-  formData.append('address', address || '')
 
+  formData.append('address', address || '')
 
   files.forEach((file) => {
     formData.append('attachments', file)
@@ -95,6 +93,23 @@ export const updateComplaint = async (
   return response.data
 }
 
+/*
+ * Admin-only priority override
+ */
+export const updateComplaintPriority = async (
+  id,
+  priority
+) => {
+  const response = await api.patch(
+    `/complaints/${id}/priority`,
+    {
+      priority,
+    }
+  )
+
+  return response.data
+}
+
 export const assignComplaint = async (
   id,
   staffId
@@ -104,6 +119,30 @@ export const assignComplaint = async (
     {
       staffId,
     }
+  )
+
+  return response.data
+}
+
+export const markComplaintAsDuplicate = async (
+  id,
+  originalComplaintId,
+  note = ''
+) => {
+  const response = await api.patch(
+    `/complaints/${id}/duplicate`,
+    {
+      originalComplaintId,
+      note,
+    }
+  )
+
+  return response.data
+}
+
+export const getDuplicateComplaints = async () => {
+  const response = await api.get(
+    '/complaints/duplicates'
   )
 
   return response.data

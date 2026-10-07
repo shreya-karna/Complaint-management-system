@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
+
 import {
   ArrowLeft,
   Calendar,
@@ -22,9 +26,17 @@ import { Badge } from '@/components/ui/badge'
 function MyComplaints() {
   const navigate = useNavigate()
 
-  const [complaints, setComplaints] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [searchParams] =
+    useSearchParams()
+
+  const [complaints, setComplaints] =
+    useState([])
+
+  const [isLoading, setIsLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState('')
 
   const fetchComplaints = async () => {
     try {
@@ -33,7 +45,9 @@ function MyComplaints() {
 
       const result = await getComplaints()
 
-      setComplaints(result.complaints || [])
+      setComplaints(
+        result.complaints || []
+      )
     } catch (error) {
       console.error(
         'Failed to fetch complaints:',
@@ -52,6 +66,62 @@ function MyComplaints() {
   useEffect(() => {
     fetchComplaints()
   }, [])
+
+  /*
+   * Read the status from the URL.
+   *
+   * Examples:
+   * /my-complaints?status=SUBMITTED
+   * /my-complaints?status=IN_PROGRESS
+   * /my-complaints?status=RESOLVED
+   */
+  const selectedStatus =
+    searchParams.get('status')
+
+  /*
+   * Filter complaints according to
+   * the dashboard card that was clicked.
+   */
+  const filteredComplaints =
+    complaints.filter((complaint) => {
+      // No status selected = show all complaints
+      if (!selectedStatus) {
+        return true
+      }
+
+      // Submitted
+      if (
+        selectedStatus === 'SUBMITTED'
+      ) {
+        return (
+          complaint.status === 'SUBMITTED'
+        )
+      }
+
+      // In Progress
+      if (
+        selectedStatus === 'IN_PROGRESS'
+      ) {
+        return [
+          'UNDER_REVIEW',
+          'ASSIGNED',
+          'IN_PROGRESS',
+        ].includes(complaint.status)
+      }
+
+      // Resolved
+      if (
+        selectedStatus === 'RESOLVED'
+      ) {
+        return [
+          'RESOLVED',
+          'CLOSED',
+        ].includes(complaint.status)
+      }
+
+      // Fallback
+      return true
+    })
 
   const formatDate = (date) => {
     if (!date) {
@@ -87,7 +157,9 @@ function MyComplaints() {
     }
   }
 
-  const getPriorityVariant = (priority) => {
+  const getPriorityVariant = (
+    priority
+  ) => {
     switch (priority) {
       case 'CRITICAL':
       case 'HIGH':
@@ -101,11 +173,48 @@ function MyComplaints() {
     }
   }
 
+  const getPageTitle = () => {
+    switch (selectedStatus) {
+      case 'SUBMITTED':
+        return 'Submitted Complaints'
+
+      case 'IN_PROGRESS':
+        return 'Complaints In Progress'
+
+      case 'RESOLVED':
+        return 'Resolved Complaints'
+
+      default:
+        return 'My Complaints'
+    }
+  }
+
+  const getPageDescription = () => {
+    switch (selectedStatus) {
+      case 'SUBMITTED':
+        return 'Complaints that are waiting for review.'
+
+      case 'IN_PROGRESS':
+        return 'Complaints currently being handled by the relevant department.'
+
+      case 'RESOLVED':
+        return 'Complaints that have been resolved or closed.'
+
+      default:
+        return 'View and track your submitted complaints.'
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* HEADER */}
       <header className="border-b bg-white">
+
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+
           <div>
+
             <p className="text-sm font-medium text-blue-600">
               CITIZEN SERVICES
             </p>
@@ -113,24 +222,37 @@ function MyComplaints() {
             <h1 className="text-xl font-bold text-slate-900">
               Complaint Management System
             </h1>
+
           </div>
 
           <Button
             variant="outline"
-            onClick={() => navigate('/')}
+            onClick={() =>
+              navigate('/')
+            }
           >
             <Home className="mr-2 h-4 w-4" />
             Dashboard
           </Button>
+
         </div>
+
       </header>
 
+
+      {/* MAIN */}
       <main className="mx-auto max-w-6xl px-6 py-10">
+
+        {/* PAGE HEADER */}
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
           <div>
+
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() =>
+                navigate('/')
+              }
               className="mb-3 flex items-center text-sm text-slate-500 transition hover:text-slate-900"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -138,13 +260,15 @@ function MyComplaints() {
             </button>
 
             <h2 className="text-3xl font-bold text-slate-900">
-              My Complaints
+              {getPageTitle()}
             </h2>
 
             <p className="mt-2 text-slate-600">
-              View and track your submitted complaints.
+              {getPageDescription()}
             </p>
+
           </div>
+
 
           <Button
             variant="outline"
@@ -153,17 +277,26 @@ function MyComplaints() {
           >
             <RefreshCw
               className={`mr-2 h-4 w-4 ${
-                isLoading ? 'animate-spin' : ''
+                isLoading
+                  ? 'animate-spin'
+                  : ''
               }`}
             />
+
             Refresh
           </Button>
+
         </div>
 
+
+        {/* ERROR */}
         {error && (
           <Card className="mb-6 border-red-200">
+
             <CardContent className="p-6">
+
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
                 <p className="text-sm text-red-600">
                   {error}
                 </p>
@@ -174,171 +307,294 @@ function MyComplaints() {
                 >
                   Try Again
                 </Button>
+
               </div>
+
             </CardContent>
+
           </Card>
         )}
 
+
+        {/* LOADING */}
         {isLoading && (
           <div className="grid gap-5">
-            {[1, 2, 3].map((item) => (
-              <Card key={item}>
-                <CardContent className="p-6">
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-5 w-1/3 rounded bg-slate-200" />
-                    <div className="h-4 w-1/4 rounded bg-slate-200" />
-                    <div className="h-4 w-2/3 rounded bg-slate-200" />
-                    <div className="h-4 w-1/2 rounded bg-slate-200" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+            {[1, 2, 3].map(
+              (item) => (
+                <Card key={item}>
+
+                  <CardContent className="p-6">
+
+                    <div className="animate-pulse space-y-4">
+
+                      <div className="h-5 w-1/3 rounded bg-slate-200" />
+
+                      <div className="h-4 w-1/4 rounded bg-slate-200" />
+
+                      <div className="h-4 w-2/3 rounded bg-slate-200" />
+
+                      <div className="h-4 w-1/2 rounded bg-slate-200" />
+
+                    </div>
+
+                  </CardContent>
+
+                </Card>
+              )
+            )}
+
           </div>
         )}
 
+
+        {/* NO COMPLAINTS */}
         {!isLoading &&
           !error &&
-          complaints.length === 0 && (
+          filteredComplaints.length === 0 && (
             <Card>
+
               <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
+
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+
                   <FileText className="h-8 w-8 text-slate-400" />
+
                 </div>
 
                 <h3 className="text-xl font-semibold text-slate-900">
-                  No complaints found
+
+                  {selectedStatus
+                    ? 'No complaints found'
+                    : 'No complaints found'}
+
                 </h3>
 
                 <p className="mt-2 max-w-md text-slate-500">
-                  You haven't submitted any complaints yet.
+
+                  {selectedStatus
+                    ? 'There are no complaints matching this status.'
+                    : "You haven't submitted any complaints yet."}
+
                 </p>
 
                 <Button
                   className="mt-6"
                   onClick={() =>
-                    navigate('/select-department')
+                    navigate(
+                      '/select-department'
+                    )
                   }
                 >
                   Submit a Complaint
                 </Button>
+
               </CardContent>
+
             </Card>
           )}
 
+
+        {/* COMPLAINT LIST */}
         {!isLoading &&
           !error &&
-          complaints.length > 0 && (
+          filteredComplaints.length > 0 && (
+
             <div className="space-y-5">
-              {complaints.map((complaint) => (
-                <Card
-                  key={complaint._id}
-                  className="transition-shadow hover:shadow-md"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-blue-600">
-                            {complaint.complaintNumber}
-                          </span>
 
-                          <Badge
-                            variant={getStatusVariant(
-                              complaint.status
-                            )}
-                          >
-                            {complaint.status}
-                          </Badge>
+              {filteredComplaints.map(
+                (complaint) => (
 
-                          <Badge
-                            variant={getPriorityVariant(
-                              complaint.priority
-                            )}
-                          >
-                            {complaint.priority}
-                          </Badge>
-                        </div>
+                  <Card
+                    key={complaint._id}
+                    className="transition-shadow hover:shadow-md"
+                  >
 
-                        <h3 className="mt-3 text-xl font-semibold text-slate-900">
-                          {complaint.title}
-                        </h3>
+                    <CardContent className="p-6">
 
-                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-                          {complaint.description}
-                        </p>
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
 
-                        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-500">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            <span>
-                              {complaint.category}
-                            </span>
-                          </div>
+                        {/* COMPLAINT INFORMATION */}
+                        <div className="min-w-0 flex-1">
 
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>
-  {complaint.location
-    ? typeof complaint.location === 'string'
-      ? complaint.location
-      : [
-          complaint.location.province,
-          complaint.location.district,
-          complaint.location.municipality,
-          complaint.location.ward
-            ? `Ward ${complaint.location.ward}`
-            : '',
-          complaint.location.tole,
-        ]
-          .filter(Boolean)
-          .join(', ')
-    : 'N/A'}
-</span>
-                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
 
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              {formatDate(
-                                complaint.createdAt
-                              )}
-                            </span>
-                          </div>
-                        </div>
-
-                        <p className="mt-4 text-sm text-slate-500">
-                          Department:{' '}
-                          <span className="font-medium text-slate-700">
-                            {complaint.departmentName}
-                          </span>
-                        </p>
-                      </div>
-
-                      <div className="shrink-0">
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            navigate(
-                              `/complaints/${complaint._id}`,
+                            <span className="text-sm font-semibold text-blue-600">
                               {
-                                state: {
-                                  complaint,
-                                },
+                                complaint.complaintNumber
                               }
-                            )
-                          }
-                        >
-                          View Details
-                          <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
+                            </span>
+
+                            <Badge
+                              variant={getStatusVariant(
+                                complaint.status
+                              )}
+                            >
+                              {
+                                complaint.status
+                              }
+                            </Badge>
+
+                            <Badge
+                              variant={getPriorityVariant(
+                                complaint.priority
+                              )}
+                            >
+                              {
+                                complaint.priority
+                              }
+                            </Badge>
+
+                          </div>
+
+
+                          <h3 className="mt-3 text-xl font-semibold text-slate-900">
+                            {
+                              complaint.title
+                            }
+                          </h3>
+
+
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                            {
+                              complaint.description
+                            }
+                          </p>
+
+
+                          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-500">
+
+                            {/* CATEGORY */}
+                            <div className="flex items-center gap-2">
+
+                              <FileText className="h-4 w-4" />
+
+                              <span>
+                                {
+                                  complaint.category
+                                }
+                              </span>
+
+                            </div>
+
+
+                            {/* LOCATION */}
+                            <div className="flex items-center gap-2">
+
+                              <MapPin className="h-4 w-4" />
+
+                              <span>
+
+                                {complaint.location
+                                  ? typeof complaint.location ===
+                                    'string'
+                                    ? complaint.location
+                                    : [
+                                        complaint
+                                          .location
+                                          .province,
+
+                                        complaint
+                                          .location
+                                          .district,
+
+                                        complaint
+                                          .location
+                                          .municipality,
+
+                                        complaint
+                                          .location
+                                          .ward
+                                          ? `Ward ${complaint.location.ward}`
+                                          : '',
+
+                                        complaint
+                                          .location
+                                          .tole,
+                                      ]
+                                        .filter(
+                                          Boolean
+                                        )
+                                        .join(
+                                          ', '
+                                        )
+                                  : 'N/A'}
+
+                              </span>
+
+                            </div>
+
+
+                            {/* DATE */}
+                            <div className="flex items-center gap-2">
+
+                              <Calendar className="h-4 w-4" />
+
+                              <span>
+                                {formatDate(
+                                  complaint.createdAt
+                                )}
+                              </span>
+
+                            </div>
+
+                          </div>
+
+
+                          {/* DEPARTMENT */}
+                          <p className="mt-4 text-sm text-slate-500">
+
+                            Department:{' '}
+
+                            <span className="font-medium text-slate-700">
+                              {
+                                complaint.departmentName
+                              }
+                            </span>
+
+                          </p>
+
+                        </div>
+
+
+                        {/* VIEW DETAILS */}
+                        <div className="shrink-0">
+
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              navigate(
+                                `/complaints/${complaint._id}`,
+                                {
+                                  state: {
+                                    complaint,
+                                  },
+                                }
+                              )
+                            }
+                          >
+                            View Details
+
+                            <ChevronRight className="ml-2 h-4 w-4" />
+
+                          </Button>
+
+                        </div>
+
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+
+                    </CardContent>
+
+                  </Card>
+
+                )
+              )}
+
             </div>
           )}
+
       </main>
+
     </div>
   )
 }

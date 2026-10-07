@@ -11,6 +11,9 @@ import {
   assignComplaint,
   updateComplaint,
   reopenComplaint,
+  markComplaintAsDuplicate,
+  getDuplicateComplaints,
+  updateComplaintPriority,
 } from '../controllers/complaintController.js'
 
 import { authenticate } from '../middleware/authMiddleware.js'
@@ -92,10 +95,20 @@ router.get(
   trackComplaint
 )
 
+// Public complaints
 router.get(
   '/public',
   authenticate,
   getPublicComplaints
+)
+
+// Admin - view duplicate complaints
+// IMPORTANT: This must come BEFORE /:id
+router.get(
+  '/duplicates',
+  authenticate,
+  authorizeRoles('ADMIN'),
+  getDuplicateComplaints
 )
 
 // Logged-in users - view one complaint
@@ -103,6 +116,14 @@ router.get(
   '/:id',
   authenticate,
   getComplaintById
+)
+
+// Admin - mark complaint as duplicate
+router.patch(
+  '/:id/duplicate',
+  authenticate,
+  authorizeRoles('ADMIN'),
+  markComplaintAsDuplicate
 )
 
 // Admin - assign complaint to staff
@@ -113,6 +134,14 @@ router.patch(
   assignComplaint
 )
 
+// Admin - manually override complaint priority
+router.patch(
+  '/:id/priority',
+  authenticate,
+  authorizeRoles('ADMIN'),
+  updateComplaintPriority
+)
+
 // Citizen - reopen complaint
 router.patch(
   '/:id/reopen',
@@ -121,7 +150,7 @@ router.patch(
   reopenComplaint
 )
 
-// Staff/Admin - update complaint
+// Staff/Admin - update complaint status and priority
 router.patch(
   '/:id',
   authenticate,

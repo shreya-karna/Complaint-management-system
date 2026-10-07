@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import {
   FileText,
   Clock,
@@ -10,77 +11,233 @@ import {
 } from 'lucide-react'
 
 import { getComplaints } from '../../services/complaintService'
-import {
-  getNotifications,
-  markNotificationAsRead,
-} from '../../services/notificationService'
+import { getNotifications } from '../../services/notificationService'
+import { getStaffFeedback } from '../../services/feedbackService'
+import ComplaintsMap from '../../components/ComplaintsMap'
+
+
+const statusStyles = {
+  SUBMITTED:
+    'border-sky-200 bg-sky-50 text-sky-700',
+
+  UNDER_REVIEW:
+    'border-amber-200 bg-amber-50 text-amber-700',
+
+  ASSIGNED:
+    'border-violet-200 bg-violet-50 text-violet-700',
+
+  IN_PROGRESS:
+    'border-blue-200 bg-blue-50 text-blue-700',
+
+  RESOLVED:
+    'border-emerald-200 bg-emerald-50 text-emerald-700',
+
+  CLOSED:
+    'border-slate-200 bg-slate-50 text-slate-700',
+
+  REJECTED:
+    'border-rose-200 bg-rose-50 text-rose-700',
+
+  REOPENED:
+    'border-orange-200 bg-orange-50 text-orange-700',
+
+  DUPLICATE:
+    'border-purple-200 bg-purple-50 text-purple-700',
+}
+
+
+const formatStatus = (status) => {
+  if (!status) {
+    return 'Unknown'
+  }
+
+  return status
+    .toLowerCase()
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase()
+    )
+}
+
+
+function StatusBadge({ status }) {
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+        statusStyles[status] ||
+        'border-gray-200 bg-gray-50 text-gray-700'
+      }`}
+    >
+      {formatStatus(status)}
+    </span>
+  )
+}
+
+
+function StatCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group w-full text-left"
+    >
+      <div className="h-full rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-slate-300 group-hover:shadow-md">
+
+        <div className="flex items-start justify-between p-5">
+
+          <div className="flex min-w-0 flex-col gap-3">
+
+            <p className="text-sm font-medium text-slate-500">
+              {label}
+            </p>
+
+            <p className="text-3xl font-bold tracking-tight text-[#102d49]">
+              {value}
+            </p>
+
+            <p className="text-xs text-slate-500">
+              {detail}
+            </p>
+
+          </div>
+
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}
+          >
+            <Icon
+              size={21}
+              aria-hidden="true"
+            />
+          </div>
+
+        </div>
+
+      </div>
+    </button>
+  )
+}
+
 
 function StaffDashboard() {
   const navigate = useNavigate()
 
-  const [complaints, setComplaints] = useState([])
+  const [complaints, setComplaints] =
+    useState([])
+
   const [notifications, setNotifications] =
     useState([])
 
-  const [showNotifications, setShowNotifications] =
-    useState(false)
+  const [feedback, setFeedback] =
+    useState([])
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState('')
+
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const loadDashboard = async () => {
       try {
-        setIsLoading(true)
+        setLoading(true)
         setError('')
 
         const [
-          complaintsResponse,
-          notificationsResponse,
+          complaintsData,
+          notificationsData,
         ] = await Promise.all([
           getComplaints(),
           getNotifications(),
         ])
 
         setComplaints(
-          complaintsResponse.complaints || []
+          Array.isArray(complaintsData)
+            ? complaintsData
+            : complaintsData?.complaints || []
         )
 
         setNotifications(
-          notificationsResponse.notifications || []
+          Array.isArray(notificationsData)
+            ? notificationsData
+            : notificationsData?.notifications || []
         )
-      } catch (error) {
+
+      } catch (err) {
         console.error(
-          'Failed to fetch staff dashboard data:',
-          error
+          'Failed to load staff dashboard:',
+          err
         )
 
         setError(
-          error.response?.data?.message ||
+          err?.response?.data?.message ||
             'Failed to load dashboard.'
         )
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
 
-    fetchDashboardData()
+    loadDashboard()
   }, [])
 
-  const totalComplaints = complaints.length
 
-  const pendingComplaints = complaints.filter(
-    (complaint) =>
-      complaint.status === 'SUBMITTED' ||
-      complaint.status === 'UNDER_REVIEW' ||
-      complaint.status === 'ASSIGNED'
-  ).length
+  /*
+   * Load staff feedback separately.
+   *
+   * This prevents a feedback API problem
+   * from breaking the entire dashboard.
+   */
+  useEffect(() => {
+    const loadFeedback = async () => {
+      try {
+        const response =
+          await getStaffFeedback()
+
+        setFeedback(
+          response?.feedback || []
+        )
+      } catch (err) {
+        console.error(
+          'Failed to load staff feedback:',
+          err
+        )
+
+        // Keep feedback empty if the request fails.
+        setFeedback([])
+      }
+    }
+
+    loadFeedback()
+  }, [])
+
+
+  const totalComplaints =
+    complaints.length
+
+
+  const pendingComplaints =
+    complaints.filter(
+      (complaint) =>
+        complaint.status === 'SUBMITTED' ||
+        complaint.status === 'UNDER_REVIEW' ||
+        complaint.status === 'ASSIGNED'
+    ).length
+
 
   const inProgressComplaints =
     complaints.filter(
       (complaint) =>
         complaint.status === 'IN_PROGRESS'
     ).length
+
 
   const resolvedComplaints =
     complaints.filter(
@@ -89,321 +246,508 @@ function StaffDashboard() {
         complaint.status === 'CLOSED'
     ).length
 
-  const recentComplaints = complaints.slice(
-    0,
-    5
-  )
 
-  const unreadCount = notifications.filter(
-    (notification) =>
-      !notification.isRead
-  ).length
-
-  const handleNotificationClick = async (
-    notification
-  ) => {
-    try {
-      if (!notification.isRead) {
-        await markNotificationAsRead(
-          notification._id
-        )
-
-        setNotifications((current) =>
-          current.map((item) =>
-            item._id === notification._id
-              ? {
-                  ...item,
-                  isRead: true,
-                }
-              : item
-          )
-        )
-      }
-
-      setShowNotifications(false)
-
-      if (notification.complaintId?._id) {
-        navigate(
-          `/staff/complaints/${notification.complaintId._id}`
-        )
-      }
-    } catch (error) {
-      console.error(
-        'Failed to mark notification as read:',
-        error
+  const recentComplaints =
+    [...complaints]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt) -
+          new Date(a.createdAt)
       )
+      .slice(0, 5)
+
+
+  const unreadNotifications =
+    notifications.filter(
+      (notification) =>
+        !notification.isRead
+    ).length
+
+
+  const formatDate = (date) => {
+    if (!date) {
+      return 'N/A'
     }
+
+    return new Date(date).toLocaleDateString(
+      'en-US',
+      {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }
+    )
   }
 
-  if (isLoading) {
+
+  const goToComplaints = (status) => {
+    if (status) {
+      navigate(
+        `/staff/complaints?status=${status}`
+      )
+
+      return
+    }
+
+    navigate('/staff/complaints')
+  }
+
+
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">
-          Loading staff dashboard...
-        </p>
+      <div className="flex min-h-[60vh] items-center justify-center bg-gray-50">
+
+        <div className="text-center">
+
+          <LoaderCircle className="mx-auto mb-3 h-10 w-10 animate-spin text-blue-600" />
+
+          <p className="text-gray-600">
+            Loading dashboard...
+          </p>
+
+        </div>
+
       </div>
     )
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div>
-            <p className="text-sm font-medium text-blue-600">
-              Staff Portal
-            </p>
 
-            <h1 className="text-2xl font-bold">
+      <main className="mx-auto max-w-7xl px-6 py-8">
+
+        {/* Header */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+          <div>
+
+            <h1 className="text-3xl font-bold text-gray-900">
               Staff Dashboard
             </h1>
+
+            <p className="mt-2 text-gray-500">
+              Manage and track complaints assigned to
+              your department.
+            </p>
+
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() =>
-                  setShowNotifications(
-                    (current) => !current
-                  )
-                }
-                className="relative rounded-md border bg-white p-2 hover:bg-gray-50"
-                aria-label="Notifications"
-              >
-                <Bell size={20} />
 
-                {unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-                    {unreadCount > 9
-                      ? '9+'
-                      : unreadCount}
-                  </span>
-                )}
-              </button>
+          {/* Notifications */}
+          <button
+            type="button"
+            onClick={() =>
+              navigate('/staff/notifications')
+            }
+            className="relative inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
 
-              {showNotifications && (
-                <div className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-xl border bg-white shadow-lg">
-                  <div className="border-b px-4 py-3">
-                    <h3 className="font-semibold">
-                      Notifications
-                    </h3>
+            <Bell className="h-5 w-5" />
 
-                    <p className="text-xs text-gray-500">
-                      {unreadCount} unread
-                    </p>
-                  </div>
+            Notifications
 
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center">
-                      <p className="text-sm text-gray-500">
-                        No notifications.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.map(
-                        (notification) => (
-                          <button
-                            key={notification._id}
-                            type="button"
-                            onClick={() =>
-                              handleNotificationClick(
-                                notification
-                              )
-                            }
-                            className={`w-full border-b px-4 py-4 text-left hover:bg-gray-50 ${
-                              !notification.isRead
-                                ? 'bg-blue-50'
-                                : 'bg-white'
-                            }`}
-                          >
-                            <div className="flex gap-3">
-                              <Bell
-                                size={18}
-                                className="mt-0.5 shrink-0"
-                              />
+            {unreadNotifications > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                {unreadNotifications}
+              </span>
+            )}
 
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold">
-                                  {notification.title}
-                                </p>
+          </button>
 
-                                <p className="mt-1 text-xs text-gray-600">
-                                  {notification.message}
-                                </p>
-
-                                <p className="mt-2 text-[11px] text-gray-400">
-                                  {new Date(
-                                    notification.createdAt
-                                  ).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate('/staff/complaints')
-              }
-              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              View Complaints
-            </button>
-          </div>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+
+        {/* Error */}
         {error && (
-          <div className="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
           </div>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Total Complaints
-              </p>
 
-              <FileText size={20} />
-            </div>
+        {/* Statistics */}
+        <section
+          className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+          aria-label="Complaint statistics"
+        >
 
-            <p className="mt-3 text-3xl font-bold">
-              {totalComplaints}
-            </p>
-          </div>
+          <StatCard
+            label="Total Complaints"
+            value={totalComplaints}
+            detail="All complaints assigned to you"
+            icon={FileText}
+            tone="bg-blue-50 text-blue-600"
+            onClick={() =>
+              goToComplaints()
+            }
+          />
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Pending
-              </p>
 
-              <Clock size={20} />
-            </div>
+          <StatCard
+            label="Pending"
+            value={pendingComplaints}
+            detail="Awaiting further action"
+            icon={Clock}
+            tone="bg-yellow-50 text-yellow-600"
+            onClick={() =>
+              goToComplaints('PENDING')
+            }
+          />
 
-            <p className="mt-3 text-3xl font-bold">
-              {pendingComplaints}
-            </p>
-          </div>
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                In Progress
-              </p>
+          <StatCard
+            label="In Progress"
+            value={inProgressComplaints}
+            detail="Currently being handled"
+            icon={LoaderCircle}
+            tone="bg-orange-50 text-orange-600"
+            onClick={() =>
+              goToComplaints('IN_PROGRESS')
+            }
+          />
 
-              <LoaderCircle size={20} />
-            </div>
 
-            <p className="mt-3 text-3xl font-bold">
-              {inProgressComplaints}
-            </p>
-          </div>
+          <StatCard
+            label="Resolved"
+            value={resolvedComplaints}
+            detail="Successfully completed"
+            icon={CheckCircle}
+            tone="bg-emerald-50 text-emerald-600"
+            onClick={() =>
+              goToComplaints('RESOLVED')
+            }
+          />
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Resolved
-              </p>
+        </section>
 
-              <CheckCircle size={20} />
-            </div>
 
-            <p className="mt-3 text-3xl font-bold">
-              {resolvedComplaints}
-            </p>
-          </div>
-        </div>
+        {/* Recent Complaints */}
+        <section className="mt-8">
 
-        <div className="mt-8 rounded-xl border bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b px-6 py-5">
+          <div className="mb-5 flex items-center justify-between">
+
             <div>
-              <h2 className="text-lg font-semibold">
+
+              <h2 className="text-xl font-semibold text-gray-900">
                 Recent Complaints
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
                 Recently submitted complaints
               </p>
+
             </div>
+
 
             <button
               type="button"
               onClick={() =>
                 navigate('/staff/complaints')
               }
-              className="flex items-center gap-1 text-sm font-medium hover:underline"
+              className="hidden items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 sm:flex"
             >
+
               View all
-              <ArrowRight size={16} />
+
+              <ArrowRight className="h-4 w-4" />
+
             </button>
+
           </div>
 
-          {recentComplaints.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-sm text-gray-500">
-                No complaints found.
+
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+
+            {recentComplaints.length === 0 ? (
+
+              <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+
+                  <FileText className="h-8 w-8 text-blue-600" />
+
+                </div>
+
+                <h3 className="mt-5 text-lg font-bold text-gray-900">
+                  No complaints found
+                </h3>
+
+                <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">
+                  Complaints assigned to your department
+                  will appear here.
+                </p>
+
+              </div>
+
+            ) : (
+
+              <div className="divide-y divide-gray-100">
+
+                {recentComplaints.map(
+                  (complaint) => (
+
+                    <div
+                      key={complaint._id}
+                      className="flex flex-col gap-4 px-5 py-5 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+                    >
+
+                      {/* Complaint Information */}
+                      <div className="min-w-0">
+
+                        <div className="flex flex-wrap items-center gap-2">
+
+                          <span className="text-sm font-semibold text-blue-600">
+                            {complaint.complaintNumber ||
+                              'No complaint number'}
+                          </span>
+
+                          <StatusBadge
+                            status={
+                              complaint.status
+                            }
+                          />
+
+                        </div>
+
+
+                        <h3 className="mt-1 truncate font-medium text-gray-900">
+                          {complaint.title ||
+                            'Untitled complaint'}
+                        </h3>
+
+
+                        <p className="mt-1 text-sm text-gray-500">
+
+                          {complaint.departmentName ||
+                            'N/A'}
+
+                          {' • '}
+
+                          {formatDate(
+                            complaint.createdAt
+                          )}
+
+                        </p>
+
+                      </div>
+
+
+                      {/* View Button */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            `/staff/complaints/${complaint._id}`
+                          )
+                        }
+                        className="w-full shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
+                      >
+                        View
+                      </button>
+
+                    </div>
+
+                  )
+                )}
+
+              </div>
+
+            )}
+
+
+            {/* Mobile View All */}
+            <div className="border-t border-gray-100 p-4 sm:hidden">
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    '/staff/complaints'
+                  )
+                }
+                className="flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+
+                View all complaints
+
+                <ArrowRight className="h-4 w-4" />
+
+              </button>
+
+            </div>
+
+          </div>
+
+
+          {/* Complaint Map */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
+            <div>
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                Complaint Map
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                View complaints reported within your department.
               </p>
+
             </div>
-          ) : (
-            <div className="divide-y">
-              {recentComplaints.map(
-                (complaint) => (
-                  <button
-                    key={complaint._id}
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        `/staff/complaints/${complaint._id}`
-                      )
-                    }
-                    className="flex w-full items-center justify-between px-6 py-5 text-left hover:bg-gray-50"
+
+            <div className="mt-5">
+
+              <ComplaintsMap
+                complaints={complaints}
+              />
+
+            </div>
+
+          </div>
+
+
+          {/* Citizen Feedback */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
+            <div>
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                Citizen Feedback
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Feedback submitted for complaints assigned to you.
+              </p>
+
+            </div>
+
+
+            {feedback.length === 0 ? (
+
+              <div className="mt-5 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+
+                <p className="text-sm text-gray-500">
+                  No feedback has been submitted yet.
+                </p>
+
+              </div>
+
+            ) : (
+
+              <div className="mt-5 space-y-4">
+
+                {feedback.map((item) => (
+
+                  <div
+                    key={item._id}
+                    className="rounded-lg border border-gray-200 p-5"
                   >
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {complaint.title}
-                      </p>
 
-                      <p className="mt-1 text-xs text-gray-500">
-                        {complaint.complaintNumber}
-                        {' • '}
-                        {complaint.departmentName}
-                      </p>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                      {/* Complaint information */}
+                      <div className="min-w-0">
+
+                        <p className="text-sm font-semibold text-blue-600">
+                          {item.complaintId?.complaintNumber ||
+                            'Complaint'}
+                        </p>
+
+                        <h3 className="mt-1 font-medium text-gray-900">
+                          {item.complaintId?.title ||
+                            'Complaint title unavailable'}
+                        </h3>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Department:{' '}
+                          {item.complaintId?.departmentName ||
+                            'N/A'}
+                        </p>
+
+                      </div>
+
+
+                      {/* Rating */}
+                      <div className="shrink-0">
+
+                        <div className="flex items-center gap-1">
+
+                          {[1, 2, 3, 4, 5].map(
+                            (star) => (
+
+                              <span
+                                key={star}
+                                className={
+                                  star <= item.rating
+                                    ? 'text-yellow-400'
+                                    : 'text-gray-300'
+                                }
+                              >
+                                ★
+                              </span>
+
+                            )
+                          )}
+
+                        </div>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          {item.rating}/5
+                        </p>
+
+                      </div>
+
                     </div>
 
-                    <div className="text-right">
-                      <p className="text-xs font-medium">
-                        {complaint.status}
-                      </p>
 
-                      <p className="mt-1 text-xs text-gray-400">
-                        {new Date(
-                          complaint.createdAt
-                        ).toLocaleDateString()}
-                      </p>
+                    {/* Citizen comment */}
+                    {item.comment && (
+
+                      <div className="mt-4 rounded-lg bg-gray-50 p-4">
+
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Citizen Comment
+                        </p>
+
+                        <p className="mt-1 text-sm leading-6 text-gray-700">
+                          {item.comment}
+                        </p>
+
+                      </div>
+
+                    )}
+
+
+                    {/* Citizen */}
+                    <div className="mt-4 text-xs text-gray-500">
+
+                      Submitted by:{' '}
+
+                      <span className="font-medium text-gray-700">
+                        {item.citizenId?.name ||
+                          item.citizenId?.email ||
+                          'Citizen'}
+                      </span>
+
                     </div>
-                  </button>
-                )
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            )}
+
+          </div>
+
+        </section>
+
+      </main>
+
     </div>
   )
 }
+
 
 export default StaffDashboard

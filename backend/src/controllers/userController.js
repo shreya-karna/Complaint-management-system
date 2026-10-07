@@ -41,6 +41,9 @@ const verifyRecaptcha = async (captchaToken) => {
   }
 }
 
+/*
+ * Get all users
+ */
 export const getUsers = async (req, res) => {
   try {
     const users = await User.find()
@@ -48,20 +51,23 @@ export const getUsers = async (req, res) => {
       .populate('departmentId', 'name')
       .sort({ createdAt: -1 })
 
-    res.json({
+    return res.json({
       success: true,
       users,
     })
   } catch (error) {
     console.error('Get users error:', error)
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch users.',
     })
   }
 }
 
+/*
+ * Create user / Register
+ */
 export const createUser = async (req, res) => {
   try {
     const {
@@ -90,8 +96,11 @@ export const createUser = async (req, res) => {
       })
     }
 
+    const normalizedEmail =
+      email.toLowerCase().trim()
+
     const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
     })
 
     if (existingUser) {
@@ -105,9 +114,8 @@ export const createUser = async (req, res) => {
     let departmentName = ''
 
     if (departmentId) {
-      const department = await Department.findById(
-        departmentId
-      )
+      const department =
+        await Department.findById(departmentId)
 
       if (!department) {
         return res.status(400).json({
@@ -120,6 +128,9 @@ export const createUser = async (req, res) => {
       departmentName = department.name
     }
 
+    /*
+     * Create email verification token
+     */
     const emailVerificationToken =
       crypto.randomBytes(32).toString('hex')
 
@@ -127,6 +138,9 @@ export const createUser = async (req, res) => {
       Date.now() + 24 * 60 * 60 * 1000
     )
 
+    /*
+     * Create user
+     */
     const user = await User.create({
       name: name.trim(),
 
@@ -145,13 +159,16 @@ export const createUser = async (req, res) => {
       citizenshipIssueDistrict:
         citizenshipIssueDistrict?.trim() || '',
 
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
 
       isEmailVerified: false,
+
       emailVerificationToken,
+
       emailVerificationExpires,
 
-      phone: phone?.trim() || '',
+      phone:
+        phone?.trim() || '',
 
       address: {
         province:
@@ -209,21 +226,30 @@ export const createUser = async (req, res) => {
       departmentName,
     })
 
+    /*
+     * Create verification URL
+     */
     const verificationUrl =
       `${process.env.FRONTEND_URL}/verify-email/${emailVerificationToken}`
 
+    /*
+     * Send verification email
+     */
     await sendVerificationEmail(
       user.email,
       verificationUrl
     )
 
+    /*
+     * Remove sensitive fields from response
+     */
     const userResponse = user.toObject()
 
     delete userResponse.password
     delete userResponse.emailVerificationToken
     delete userResponse.emailVerificationExpires
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message:
         'Registration successful. Please check your email to verify your account.',
@@ -232,13 +258,16 @@ export const createUser = async (req, res) => {
   } catch (error) {
     console.error('Create user error:', error)
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to create user.',
     })
   }
 }
 
+/*
+ * Verify email
+ */
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params
@@ -246,7 +275,8 @@ export const verifyEmail = async (req, res) => {
     if (!token) {
       return res.status(400).json({
         success: false,
-        message: 'Verification token is required.',
+        message:
+          'Verification token is required.',
       })
     }
 
@@ -279,15 +309,18 @@ export const verifyEmail = async (req, res) => {
 
     await user.save()
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message:
         'Email verified successfully. You can now log in.',
     })
   } catch (error) {
-    console.error('Email verification error:', error)
+    console.error(
+      'Email verification error:',
+      error
+    )
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         'Failed to verify email address.',
@@ -295,6 +328,9 @@ export const verifyEmail = async (req, res) => {
   }
 }
 
+/*
+ * Update user
+ */
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params
@@ -327,6 +363,9 @@ export const updateUser = async (req, res) => {
       })
     }
 
+    /*
+     * Update email
+     */
     if (email) {
       const normalizedEmail =
         email.toLowerCase().trim()
@@ -352,7 +391,8 @@ export const updateUser = async (req, res) => {
     }
 
     if (dateOfBirth !== undefined) {
-      user.dateOfBirth = dateOfBirth.trim()
+      user.dateOfBirth =
+        dateOfBirth.trim()
     }
 
     if (gender !== undefined) {
@@ -423,11 +463,13 @@ export const updateUser = async (req, res) => {
     }
 
     if (employeeId !== undefined) {
-      user.employeeId = employeeId.trim()
+      user.employeeId =
+        employeeId.trim()
     }
 
     if (designation !== undefined) {
-      user.designation = designation.trim()
+      user.designation =
+        designation.trim()
     }
 
     if (password) {
@@ -453,8 +495,11 @@ export const updateUser = async (req, res) => {
           })
         }
 
-        user.departmentId = department._id
-        user.departmentName = department.name
+        user.departmentId =
+          department._id
+
+        user.departmentName =
+          department.name
       } else {
         user.departmentId = null
         user.departmentName = ''
@@ -470,23 +515,32 @@ export const updateUser = async (req, res) => {
     const userResponse = user.toObject()
 
     delete userResponse.password
+    delete userResponse.emailVerificationToken
+    delete userResponse.emailVerificationExpires
 
-    res.json({
+    return res.json({
       success: true,
-      message: 'User updated successfully.',
+      message:
+        'User updated successfully.',
       user: userResponse,
     })
   } catch (error) {
-    console.error('Update user error:', error)
+    console.error(
+      'Update user error:',
+      error
+    )
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: 'Failed to update user.',
+      message:
+        'Failed to update user.',
     })
   }
 }
 
-// Login user
+/*
+ * Login user
+ */
 export const loginUser = async (req, res) => {
   try {
     const {
@@ -498,15 +552,19 @@ export const loginUser = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required.',
+        message:
+          'Email and password are required.',
       })
     }
 
-    // Verify CAPTCHA before allowing login
+    /*
+     * Verify CAPTCHA
+     */
     if (!captchaToken) {
       return res.status(400).json({
         success: false,
-        message: 'Please complete the CAPTCHA.',
+        message:
+          'Please complete the CAPTCHA.',
       })
     }
 
@@ -521,37 +579,49 @@ export const loginUser = async (req, res) => {
       })
     }
 
+    const normalizedEmail =
+      email.toLowerCase().trim()
+
     const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    }).populate('departmentId', 'name')
+      email: normalizedEmail,
+    }).populate(
+      'departmentId',
+      'name'
+    )
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message:
+          'Invalid email or password.',
       })
     }
 
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: 'Your account is inactive.',
+        message:
+          'Your account is inactive.',
       })
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      user.password
-    )
+    const isPasswordValid =
+      await bcrypt.compare(
+        password,
+        user.password
+      )
 
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message:
+          'Invalid email or password.',
       })
     }
 
-    // Check email verification
+    /*
+     * Check email verification
+     */
     if (!user.isEmailVerified) {
       return res.status(403).json({
         success: false,
@@ -560,13 +630,16 @@ export const loginUser = async (req, res) => {
       })
     }
 
-    // Create JWT token
+    /*
+     * Create JWT token
+     */
     const token = jwt.sign(
       {
         userId: user._id,
         role: user.role,
         departmentId:
-          user.departmentId?._id || null,
+          user.departmentId?._id ||
+          null,
       },
       process.env.JWT_SECRET,
       {
@@ -574,133 +647,166 @@ export const loginUser = async (req, res) => {
       }
     )
 
-    const userResponse = user.toObject()
+    const userResponse =
+      user.toObject()
 
     delete userResponse.password
+    delete userResponse.emailVerificationToken
+    delete userResponse.emailVerificationExpires
 
-    res.json({
+    return res.json({
       success: true,
-      message: 'Login successful.',
+      message:
+        'Login successful.',
       token,
       user: userResponse,
     })
   } catch (error) {
-    console.error('Login error:', error)
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to login.',
-    })
-  }
-}
-
-export const getStaffByDepartment = async (req, res) => {
-  try {
-    const { departmentId } = req.params
-
-    if (!departmentId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Department ID is required.',
-      })
-    }
-
-    const staff = await User.find({
-      role: 'STAFF',
-      departmentId,
-    })
-      .select('-password')
-      .sort({ name: 1 })
-
-    res.status(200).json({
-      success: true,
-      staff,
-    })
-  } catch (error) {
     console.error(
-      'Get staff by department error:',
+      'Login error:',
       error
     )
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
-        'Failed to fetch department staff.',
+        'Failed to login.',
     })
   }
 }
 
-// Resend email verification
-export const resendVerificationEmail = async (
-  req,
-  res
-) => {
-  try {
-    const { email } = req.body
+/*
+ * Get staff by department
+ */
+export const getStaffByDepartment =
+  async (req, res) => {
+    try {
+      const { departmentId } =
+        req.params
 
-    if (!email) {
-      return res.status(400).json({
+      if (!departmentId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Department ID is required.',
+        })
+      }
+
+      const staff = await User.find({
+        role: 'STAFF',
+        departmentId,
+      })
+        .select('-password')
+        .sort({ name: 1 })
+
+      return res.status(200).json({
+        success: true,
+        staff,
+      })
+    } catch (error) {
+      console.error(
+        'Get staff by department error:',
+        error
+      )
+
+      return res.status(500).json({
         success: false,
-        message: 'Email is required.',
+        message:
+          'Failed to fetch department staff.',
       })
     }
-
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    })
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'No account found with this email.',
-      })
-    }
-
-    if (user.isEmailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'This email is already verified.',
-      })
-    }
-
-    const emailVerificationToken =
-      crypto.randomBytes(32).toString('hex')
-
-    const emailVerificationExpires = new Date(
-      Date.now() + 24 * 60 * 60 * 1000
-    )
-
-    user.emailVerificationToken =
-      emailVerificationToken
-
-    user.emailVerificationExpires =
-      emailVerificationExpires
-
-    await user.save()
-
-    const verificationUrl =
-      `${process.env.FRONTEND_URL}/verify-email/${emailVerificationToken}`
-
-    await sendVerificationEmail(
-      user.email,
-      verificationUrl
-    )
-
-    res.status(200).json({
-      success: true,
-      message:
-        'Verification email sent. Please check your email.',
-    })
-  } catch (error) {
-    console.error(
-      'Resend verification email error:',
-      error
-    )
-
-    res.status(500).json({
-      success: false,
-      message:
-        'Failed to send verification email.',
-    })
   }
-}
+
+/*
+ * Resend email verification
+ */
+export const resendVerificationEmail =
+  async (req, res) => {
+    try {
+      const { email } = req.body
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Email is required.',
+        })
+      }
+
+      const normalizedEmail =
+        email.toLowerCase().trim()
+
+      const user = await User.findOne({
+        email: normalizedEmail,
+      })
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'No account found with this email.',
+        })
+      }
+
+      if (user.isEmailVerified) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'This email is already verified.',
+        })
+      }
+
+      /*
+       * Generate new verification token
+       */
+      const emailVerificationToken =
+        crypto.randomBytes(32).toString(
+          'hex'
+        )
+
+      const emailVerificationExpires =
+        new Date(
+          Date.now() +
+            24 * 60 * 60 * 1000
+        )
+
+      user.emailVerificationToken =
+        emailVerificationToken
+
+      user.emailVerificationExpires =
+        emailVerificationExpires
+
+      await user.save()
+
+      /*
+       * Create new verification URL
+       */
+      const verificationUrl =
+        `${process.env.FRONTEND_URL}/verify-email/${emailVerificationToken}`
+
+      /*
+       * Send verification email
+       */
+      await sendVerificationEmail(
+        user.email,
+        verificationUrl
+      )
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Verification email sent. Please check your email.',
+      })
+    } catch (error) {
+      console.error(
+        'Resend verification email error:',
+        error
+      )
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Failed to send verification email.',
+      })
+    }
+  }

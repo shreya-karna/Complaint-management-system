@@ -6,14 +6,9 @@ import { useNavigate } from 'react-router-dom'
 
 import {
   MapPin,
-} from 'lucide-react'
-
-import {
   Bell,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
-  CircleDot,
   FilePlus2,
   FolderOpen,
   LayoutDashboard,
@@ -25,6 +20,7 @@ import {
   ShieldCheck,
   TrendingUp,
   X,
+  Star,
 } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -40,7 +36,6 @@ import { Separator } from '@/components/ui/separator'
 
 import {
   getComplaints,
-  getComplaintById,
 } from '@/services/complaintService'
 
 import {
@@ -73,6 +68,9 @@ const statusStyles = {
 
   REOPENED:
     'border-orange-200 bg-orange-50 text-orange-700',
+
+  DUPLICATE:
+    'border-purple-200 bg-purple-50 text-purple-700',
 }
 
 
@@ -95,7 +93,8 @@ function StatusBadge({ status }) {
     <Badge
       variant="outline"
       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-        statusStyles[status] ?? ''
+        statusStyles[status] ||
+        'border-gray-200 bg-gray-50 text-gray-700'
       }`}
     >
       {formatStatus(status)}
@@ -110,31 +109,41 @@ function StatCard({
   detail,
   icon: Icon,
   tone,
+  onClick,
 }) {
   return (
-    <Card className="border-border/70 shadow-sm">
-      <CardContent className="flex items-start justify-between p-5">
-        <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-muted-foreground">
-            {label}
-          </p>
+    <button
+      type="button"
+      onClick={onClick}
+      className="group w-full text-left"
+    >
+      <Card className="h-full border-slate-200 bg-white shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-slate-300 group-hover:shadow-md">
+        <CardContent className="flex items-start justify-between p-5">
+          <div className="flex min-w-0 flex-col gap-3">
+            <p className="text-sm font-medium text-slate-500">
+              {label}
+            </p>
 
-          <p className="text-3xl font-semibold tracking-tight text-foreground">
-            {value}
-          </p>
+            <p className="text-3xl font-bold tracking-tight text-[#102d49]">
+              {value}
+            </p>
 
-          <p className="text-xs text-muted-foreground">
-            {detail}
-          </p>
-        </div>
+            <p className="text-xs text-slate-500">
+              {detail}
+            </p>
+          </div>
 
-        <div
-          className={`flex size-11 items-center justify-center rounded-xl ${tone}`}
-        >
-          <Icon aria-hidden="true" />
-        </div>
-      </CardContent>
-    </Card>
+          <div
+            className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tone}`}
+          >
+            <Icon
+              size={21}
+              aria-hidden="true"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </button>
   )
 }
 
@@ -201,8 +210,7 @@ function CitizenDashboard() {
         )
 
         setNotifications(
-          notificationsResponse.notifications ||
-            []
+          notificationsResponse.notifications || []
         )
       } catch (error) {
         console.error(
@@ -326,59 +334,35 @@ function CitizenDashboard() {
         return 'text-amber-600'
 
       default:
-        return 'text-muted-foreground'
+        return 'text-slate-500'
     }
-  }
-
-
-  const getComplaintLocation = (
-    location
-  ) => {
-    if (!location) {
-      return 'N/A'
-    }
-
-    if (typeof location === 'string') {
-      return location
-    }
-
-    return [
-      location.province,
-      location.district,
-      location.municipality,
-      location.ward
-        ? `Ward ${location.ward}`
-        : '',
-      location.tole,
-    ]
-      .filter(Boolean)
-      .join(', ')
   }
 
 
   const handleComplaintClick =
-    async (complaint) => {
-      try {
-        /*
-         * We already have the complaint object
-         * from the dashboard API, so pass it
-         * through navigation to avoid an
-         * unnecessary API request.
-         */
-        navigate(
-          `/complaints/${complaint._id}`,
-          {
-            state: {
-              complaint,
-            },
-          }
-        )
-      } catch (error) {
-        console.error(
-          'Failed to open complaint:',
-          error
-        )
-      }
+    (complaint) => {
+      navigate(
+        `/complaints/${complaint._id}`,
+        {
+          state: {
+            complaint,
+          },
+        }
+      )
+    }
+
+
+  const handleFeedbackClick =
+    (complaint) => {
+      navigate(
+        `/complaints/${complaint._id}`,
+        {
+          state: {
+            complaint,
+            openFeedback: true,
+          },
+        }
+      )
     }
 
 
@@ -431,16 +415,18 @@ function CitizenDashboard() {
 
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb] text-foreground">
+    <main className="min-h-screen bg-[#f5f7fa] text-slate-900">
 
       {/* HEADER */}
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+
         <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-10">
 
           {/* Logo */}
           <div className="flex items-center gap-3">
+
             <div className="flex size-10 items-center justify-center rounded-xl bg-[#123b63] text-white shadow-sm">
-              <ShieldCheck aria-hidden="true" />
+              <ShieldCheck size={21} />
             </div>
 
             <div>
@@ -448,10 +434,11 @@ function CitizenDashboard() {
                 CITIZEN SERVICES
               </p>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-500">
                 Complaint Management System
               </p>
             </div>
+
           </div>
 
 
@@ -463,9 +450,9 @@ function CitizenDashboard() {
 
             <button
               type="button"
-              className="flex items-center gap-2 rounded-lg bg-[#eaf1f8] px-4 py-2.5 text-sm font-medium text-[#123b63]"
+              className="flex items-center gap-2 rounded-lg bg-[#eaf1f8] px-4 py-2.5 text-sm font-semibold text-[#123b63]"
             >
-              <LayoutDashboard aria-hidden="true" />
+              <LayoutDashboard size={18} />
               Dashboard
             </button>
 
@@ -475,15 +462,16 @@ function CitizenDashboard() {
               onClick={() =>
                 navigate('/my-complaints')
               }
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-50 hover:text-foreground"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-[#123b63]"
             >
-              <FolderOpen aria-hidden="true" />
+              <FolderOpen size={18} />
               My Complaints
             </button>
 
 
             {/* Notifications */}
             <div className="relative">
+
               <button
                 type="button"
                 onClick={() =>
@@ -492,9 +480,9 @@ function CitizenDashboard() {
                       !current
                   )
                 }
-                className="relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-50 hover:text-foreground"
+                className="relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-[#123b63]"
               >
-                <Bell aria-hidden="true" />
+                <Bell size={18} />
 
                 Notifications
 
@@ -509,47 +497,56 @@ function CitizenDashboard() {
 
 
               {showNotifications && (
-                <div className="absolute right-0 z-50 mt-2 w-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div className="absolute right-0 mt-3 w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
 
-                  <div className="border-b px-4 py-3">
+                  <div className="border-b border-slate-100 px-4 py-4">
+
                     <div className="flex items-center justify-between">
+
                       <div>
                         <h3 className="font-semibold text-slate-900">
                           Notifications
                         </h3>
 
-                        <p className="text-xs text-slate-500">
-                          {unreadCount}{' '}
-                          unread
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {unreadCount} unread
                         </p>
                       </div>
 
-                      <Bell
-                        size={18}
-                        className="text-[#123b63]"
-                      />
+                      <div className="flex size-9 items-center justify-center rounded-lg bg-[#eaf1f8] text-[#123b63]">
+                        <Bell size={17} />
+                      </div>
+
                     </div>
+
                   </div>
 
 
-                  {notifications.length ===
-                  0 ? (
-                    <div className="px-4 py-10 text-center">
-                      <Bell className="mx-auto mb-3 size-8 text-slate-300" />
+                  {notifications.length === 0 ? (
 
-                      <p className="text-sm font-medium text-slate-700">
+                    <div className="px-4 py-10 text-center">
+
+                      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-slate-100">
+                        <Bell className="size-6 text-slate-400" />
+                      </div>
+
+                      <p className="mt-3 text-sm font-semibold text-slate-700">
                         No notifications
                       </p>
 
                       <p className="mt-1 text-xs text-slate-500">
                         You're all caught up.
                       </p>
+
                     </div>
+
                   ) : (
+
                     <div className="max-h-96 overflow-y-auto">
 
                       {notifications.map(
                         (notification) => (
+
                           <button
                             key={
                               notification._id
@@ -560,12 +557,13 @@ function CitizenDashboard() {
                                 notification
                               )
                             }
-                            className={`w-full border-b px-4 py-4 text-left transition hover:bg-slate-50 ${
+                            className={`w-full border-b border-slate-100 px-4 py-4 text-left transition hover:bg-slate-50 ${
                               !notification.isRead
                                 ? 'bg-blue-50/60'
                                 : 'bg-white'
                             }`}
                           >
+
                             <div className="flex gap-3">
 
                               <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#eaf1f8] text-[#123b63]">
@@ -575,21 +573,19 @@ function CitizenDashboard() {
                               <div className="min-w-0 flex-1">
 
                                 <div className="flex items-start justify-between gap-2">
+
                                   <p className="text-sm font-semibold text-slate-900">
-                                    {
-                                      notification.title
-                                    }
+                                    {notification.title}
                                   </p>
 
                                   {!notification.isRead && (
                                     <span className="mt-1 size-2 shrink-0 rounded-full bg-blue-600" />
                                   )}
+
                                 </div>
 
                                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                                  {
-                                    notification.message
-                                  }
+                                  {notification.message}
                                 </p>
 
                                 <p className="mt-2 text-[11px] text-slate-400">
@@ -599,22 +595,27 @@ function CitizenDashboard() {
                                 </p>
 
                               </div>
+
                             </div>
+
                           </button>
+
                         )
                       )}
 
                     </div>
+
                   )}
 
                 </div>
               )}
+
             </div>
 
           </nav>
 
 
-          {/* User section */}
+          {/* User */}
           <div className="flex items-center gap-3">
 
             <Separator
@@ -622,39 +623,35 @@ function CitizenDashboard() {
               className="hidden h-8 sm:block"
             />
 
-
             <Avatar className="size-9 border border-slate-200">
-              <AvatarFallback className="bg-[#e5eef7] text-xs font-semibold text-[#123b63]">
+              <AvatarFallback className="bg-[#e5eef7] text-xs font-bold text-[#123b63]">
                 {initials}
               </AvatarFallback>
             </Avatar>
 
-
             <div className="hidden leading-tight sm:block">
-              <p className="text-sm font-semibold">
+              <p className="text-sm font-semibold text-slate-800">
                 {citizenName}
               </p>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-500">
                 Citizen
               </p>
             </div>
 
-
             <button
               type="button"
               onClick={handleLogout}
-              className="hidden text-muted-foreground hover:text-foreground sm:block"
+              className="hidden rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 sm:block"
               aria-label="Log out"
               title="Log out"
             >
               <LogOut size={18} />
             </button>
 
-
             <button
               type="button"
-              className="rounded-lg p-2 text-muted-foreground hover:bg-slate-100 md:hidden"
+              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 md:hidden"
               onClick={() =>
                 setMobileOpen(
                   !mobileOpen
@@ -681,66 +678,66 @@ function CitizenDashboard() {
         {/* MOBILE NAVIGATION */}
         {mobileOpen && (
           <nav
-            className="flex flex-col gap-1 border-t border-slate-100 px-5 py-3 md:hidden"
+            className="border-t border-slate-100 bg-white px-5 py-3 md:hidden"
             aria-label="Mobile navigation"
           >
 
-            <button
-              type="button"
-              onClick={() =>
-                setMobileOpen(false)
-              }
-              className="flex items-center gap-3 rounded-lg bg-[#eaf1f8] px-3 py-3 text-left text-sm font-medium text-[#123b63]"
-            >
-              <LayoutDashboard />
-              Dashboard
-            </button>
+            <div className="flex flex-col gap-1">
 
+              <button
+                type="button"
+                onClick={() =>
+                  setMobileOpen(false)
+                }
+                className="flex items-center gap-3 rounded-lg bg-[#eaf1f8] px-3 py-3 text-left text-sm font-semibold text-[#123b63]"
+              >
+                <LayoutDashboard size={19} />
+                Dashboard
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setMobileOpen(false)
-                navigate('/my-complaints')
-              }}
-              className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-muted-foreground"
-            >
-              <FolderOpen />
-              My Complaints
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  navigate('/my-complaints')
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                <FolderOpen size={19} />
+                My Complaints
+              </button>
 
+              <button
+                type="button"
+                onClick={() =>
+                  setShowNotifications(
+                    (current) =>
+                      !current
+                  )
+                }
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                <Bell size={19} />
 
-            <button
-              type="button"
-              onClick={() =>
-                setShowNotifications(
-                  (current) =>
-                    !current
-                )
-              }
-              className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-muted-foreground"
-            >
-              <Bell />
+                Notifications
 
-              Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-auto rounded-full bg-[#dceaf7] px-2 py-0.5 text-xs font-bold text-[#123b63]">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
 
-              {unreadCount > 0 && (
-                <span className="ml-auto rounded-full bg-[#dceaf7] px-2 py-0.5 text-xs font-bold text-[#123b63]">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+              >
+                <LogOut size={19} />
+                Log out
+              </button>
 
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-rose-600"
-            >
-              <LogOut />
-
-              Log out
-            </button>
+            </div>
 
           </nav>
         )}
@@ -748,53 +745,67 @@ function CitizenDashboard() {
       </header>
 
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <div className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
 
-        {/* Welcome section */}
-        <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        {/* Welcome */}
+        <section className="relative overflow-hidden rounded-2xl bg-[#123b63] px-6 py-7 text-white shadow-sm sm:px-8 sm:py-8">
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-[#52708d]">
-              {formatCurrentDate()}
-            </p>
+          <div className="absolute -right-16 -top-20 size-64 rounded-full bg-white/5" />
+          <div className="absolute -bottom-24 right-32 size-48 rounded-full bg-white/5" />
 
-            <h1 className="text-3xl font-semibold tracking-tight text-[#102d49] sm:text-4xl">
-              Welcome back,{' '}
-              {firstName}!
-            </h1>
+          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
 
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Report an issue in your community,
-              track your complaints, and stay
-              updated on their progress.
-            </p>
+            <div>
+
+              <p className="mb-2 text-sm font-medium text-blue-100">
+                {formatCurrentDate()}
+              </p>
+
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Welcome back, {firstName}!
+              </h1>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-blue-100 sm:text-base">
+                Report an issue in your community,
+                track your complaints, and stay
+                updated on their progress.
+              </p>
+
+            </div>
+
+
+            <Button
+              onClick={() =>
+                navigate(
+                  '/select-department'
+                )
+              }
+              className="w-full shrink-0 bg-white px-5 font-semibold text-[#123b63] shadow-sm hover:bg-blue-50 sm:w-auto"
+            >
+              <FilePlus2 data-icon="inline-start" />
+              Submit a Complaint
+            </Button>
+
           </div>
-
-
-          <Button
-            onClick={() =>
-              navigate(
-                '/select-department'
-              )
-            }
-            className="w-full bg-[#123b63] px-5 hover:bg-[#0d2d4c] sm:w-auto"
-          >
-            <FilePlus2 data-icon="inline-start" />
-
-            Submit a Complaint
-          </Button>
 
         </section>
 
 
         {/* Error */}
         {error && (
-          <Card className="mt-8 border-red-200 bg-red-50">
+          <Card className="mt-6 border-red-200 bg-red-50 shadow-sm">
             <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-red-700">
-                {error}
-              </p>
+
+              <div>
+                <p className="text-sm font-semibold text-red-800">
+                  Unable to load dashboard
+                </p>
+
+                <p className="mt-1 text-sm text-red-700">
+                  {error}
+                </p>
+              </div>
 
               <Button
                 variant="outline"
@@ -802,6 +813,7 @@ function CitizenDashboard() {
                   fetchDashboardData
                 }
                 disabled={isLoading}
+                className="border-red-200 bg-white"
               >
                 <RefreshCw
                   className={
@@ -814,14 +826,15 @@ function CitizenDashboard() {
 
                 Try Again
               </Button>
+
             </CardContent>
           </Card>
         )}
 
 
-        {/* Statistics */}
+        {/* STATISTICS */}
         <section
-          className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
           aria-label="Complaint statistics"
         >
 
@@ -835,8 +848,10 @@ function CitizenDashboard() {
             detail="All your submissions"
             icon={MessageSquareText}
             tone="bg-[#eaf1f8] text-[#2e638f]"
+            onClick={() =>
+              navigate('/my-complaints')
+            }
           />
-
 
           <StatCard
             label="Submitted"
@@ -848,8 +863,12 @@ function CitizenDashboard() {
             detail="Awaiting review"
             icon={FilePlus2}
             tone="bg-sky-50 text-sky-600"
+            onClick={() =>
+              navigate(
+                '/my-complaints?status=SUBMITTED'
+              )
+            }
           />
-
 
           <StatCard
             label="In Progress"
@@ -861,8 +880,12 @@ function CitizenDashboard() {
             detail="Currently being handled"
             icon={TrendingUp}
             tone="bg-amber-50 text-amber-600"
+            onClick={() =>
+              navigate(
+                '/my-complaints?status=IN_PROGRESS'
+              )
+            }
           />
-
 
           <StatCard
             label="Resolved"
@@ -874,28 +897,35 @@ function CitizenDashboard() {
             detail="Successfully completed"
             icon={CheckCircle2}
             tone="bg-emerald-50 text-emerald-600"
+            onClick={() =>
+              navigate(
+                '/my-complaints?status=RESOLVED'
+              )
+            }
           />
 
         </section>
 
 
-        {/* Recent complaints */}
-        <section className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
+        {/* CONTENT */}
+        <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
 
-          <Card className="overflow-hidden border-border/70 shadow-sm">
+          {/* Recent complaints */}
+          <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
 
             <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 px-5 py-5 sm:px-6">
 
               <div>
-                <CardTitle className="text-lg">
-                  Recent complaints
+
+                <CardTitle className="text-lg font-bold text-slate-900">
+                  Recent Complaints
                 </CardTitle>
 
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-slate-500">
                   A quick overview of your latest submissions
                 </p>
-              </div>
 
+              </div>
 
               <Button
                 variant="ghost"
@@ -904,10 +934,9 @@ function CitizenDashboard() {
                     '/my-complaints'
                   )
                 }
-                className="hidden text-[#123b63] sm:flex"
+                className="hidden font-semibold text-[#123b63] hover:bg-[#eaf1f8] hover:text-[#123b63] sm:flex"
               >
                 View all
-
                 <ChevronRight data-icon="inline-end" />
               </Button>
 
@@ -917,7 +946,9 @@ function CitizenDashboard() {
             <CardContent className="p-0">
 
               {isLoading ? (
-                <div className="space-y-4 p-6">
+
+                <div className="space-y-5 p-6">
+
                   {[1, 2, 3].map(
                     (item) => (
                       <div
@@ -932,25 +963,27 @@ function CitizenDashboard() {
                       </div>
                     )
                   )}
-                </div>
-              ) : recentComplaints.length ===
-                0 ? (
-                <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
 
-                  <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-slate-100">
-                    <MessageSquareText className="size-7 text-slate-400" />
+                </div>
+
+              ) : recentComplaints.length === 0 ? (
+
+                <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+
+                  <div className="flex size-16 items-center justify-center rounded-2xl bg-[#eaf1f8]">
+                    <MessageSquareText className="size-8 text-[#2e638f]" />
                   </div>
 
-                  <h3 className="text-lg font-semibold text-slate-900">
+                  <h3 className="mt-5 text-lg font-bold text-slate-900">
                     No complaints yet
                   </h3>
 
-                  <p className="mt-2 max-w-sm text-sm text-slate-500">
-                    You haven't submitted any complaints yet.
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                    You haven't submitted any complaints yet. Submit your first complaint to get started.
                   </p>
 
                   <Button
-                    className="mt-5 bg-[#123b63] hover:bg-[#0d2d4c]"
+                    className="mt-5 bg-[#123b63] shadow-sm hover:bg-[#0d2d4c]"
                     onClick={() =>
                       navigate(
                         '/select-department'
@@ -958,17 +991,18 @@ function CitizenDashboard() {
                     }
                   >
                     <FilePlus2 className="mr-2 size-4" />
-
                     Submit a Complaint
                   </Button>
 
                 </div>
+
               ) : (
+
                 <div className="overflow-x-auto">
 
-                  <table className="w-full min-w-[850px] text-left text-sm">
+                  <table className="w-full min-w-[1000px] text-left text-sm">
 
-                    <thead className="bg-slate-50/70 text-xs uppercase tracking-wide text-muted-foreground">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
 
                       <tr>
                         {[
@@ -979,12 +1013,13 @@ function CitizenDashboard() {
                           'Status',
                           'Priority',
                           'Submitted date',
+                          'Action',
                           '',
                         ].map(
                           (heading) => (
                             <th
                               key={heading}
-                              className="px-5 py-3 font-medium"
+                              className="px-5 py-3 font-semibold"
                             >
                               {heading}
                             </th>
@@ -999,21 +1034,23 @@ function CitizenDashboard() {
 
                       {recentComplaints.map(
                         (complaint) => (
+
                           <tr
                             key={
                               complaint._id
                             }
-                            className="transition-colors hover:bg-slate-50/70"
+                            className="group transition-colors hover:bg-slate-50"
                           >
 
-                            <td className="px-5 py-4 font-medium text-[#2e638f]">
+                            <td className="px-5 py-4 font-semibold text-[#2e638f]">
                               {
                                 complaint.complaintNumber
                               }
                             </td>
 
 
-                            <td className="max-w-[190px] px-5 py-4 font-medium text-foreground">
+                            <td className="max-w-[190px] px-5 py-4">
+
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1021,16 +1058,17 @@ function CitizenDashboard() {
                                     complaint
                                   )
                                 }
-                                className="text-left hover:text-[#2e638f]"
+                                className="font-semibold text-slate-800 transition hover:text-[#2e638f]"
                               >
                                 {
                                   complaint.title
                                 }
                               </button>
+
                             </td>
 
 
-                            <td className="px-5 py-4 text-muted-foreground">
+                            <td className="px-5 py-4 text-slate-500">
                               {
                                 complaint.departmentName ||
                                 'N/A'
@@ -1038,7 +1076,7 @@ function CitizenDashboard() {
                             </td>
 
 
-                            <td className="px-5 py-4 text-muted-foreground">
+                            <td className="px-5 py-4 text-slate-500">
                               {
                                 complaint.category ||
                                 'N/A'
@@ -1047,17 +1085,20 @@ function CitizenDashboard() {
 
 
                             <td className="px-5 py-4">
+
                               <StatusBadge
                                 status={
                                   complaint.status
                                 }
                               />
+
                             </td>
 
 
                             <td className="px-5 py-4">
+
                               <span
-                                className={`font-medium ${getPriorityClass(
+                                className={`font-semibold ${getPriorityClass(
                                   complaint.priority
                                 )}`}
                               >
@@ -1065,21 +1106,24 @@ function CitizenDashboard() {
                                   complaint.priority
                                 }
                               </span>
+
                             </td>
 
 
-                            <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">
+                            <td className="whitespace-nowrap px-5 py-4 text-slate-500">
                               {formatDate(
                                 complaint.createdAt
                               )}
                             </td>
 
 
+                            {/* View button */}
                             <td className="px-5 py-4">
+
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-[#2e638f]"
+                                className="font-semibold text-[#2e638f] hover:bg-[#eaf1f8] hover:text-[#123b63]"
                                 onClick={() =>
                                   handleComplaintClick(
                                     complaint
@@ -1088,9 +1132,42 @@ function CitizenDashboard() {
                               >
                                 View
                               </Button>
+
+                            </td>
+
+
+                            {/* Feedback button */}
+                            <td className="px-5 py-4">
+
+                              {[
+                                'RESOLVED',
+                                'CLOSED',
+                              ].includes(
+                                complaint.status
+                              ) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleFeedbackClick(
+                                      complaint
+                                    )
+                                  }
+                                  className="border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                                >
+                                  <Star
+                                    size={15}
+                                    className="mr-1.5"
+                                  />
+
+                                  Feedback
+                                </Button>
+                              )}
+
                             </td>
 
                           </tr>
+
                         )
                       )}
 
@@ -1099,10 +1176,12 @@ function CitizenDashboard() {
                   </table>
 
                 </div>
+
               )}
 
 
               <div className="border-t border-slate-100 p-4 sm:hidden">
+
                 <Button
                   variant="outline"
                   className="w-full"
@@ -1113,12 +1192,13 @@ function CitizenDashboard() {
                   }
                 >
                   View all complaints
-
                   <ChevronRight data-icon="inline-end" />
                 </Button>
+
               </div>
 
             </CardContent>
+
           </Card>
 
 
@@ -1126,33 +1206,36 @@ function CitizenDashboard() {
           <aside className="flex flex-col gap-6">
 
             {/* Quick actions */}
-            <Card className="border-border/70 shadow-sm">
+            <Card className="border-slate-200 bg-white shadow-sm">
 
               <CardHeader className="px-5 pb-3 pt-5">
-                <CardTitle className="text-lg">
-                  Quick actions
+
+                <CardTitle className="text-lg font-bold text-slate-900">
+                  Quick Actions
                 </CardTitle>
+
               </CardHeader>
 
 
               <CardContent className="flex flex-col gap-2 px-5 pb-5">
 
-    <Button
-  variant="outline"
-  onClick={() =>
-    navigate('/public-complaints')
-  }
-  className="justify-start"
->
-  <MapPin data-icon="inline-start" />
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate('/public-complaints')
+                  }
+                  className="h-11 justify-start border-slate-200 font-medium hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <MapPin data-icon="inline-start" />
 
-  View local complaints
+                  View local complaints
 
-  <ChevronRight
-    className="ml-auto"
-    data-icon="inline-end"
-  />
-</Button>            
+                  <ChevronRight
+                    className="ml-auto"
+                    data-icon="inline-end"
+                  />
+                </Button>
+
 
                 <Button
                   onClick={() =>
@@ -1160,7 +1243,7 @@ function CitizenDashboard() {
                       '/select-department'
                     )
                   }
-                  className="justify-start bg-[#123b63] hover:bg-[#0d2d4c]"
+                  className="h-11 justify-start bg-[#123b63] font-medium shadow-sm hover:bg-[#0d2d4c]"
                 >
                   <FilePlus2 data-icon="inline-start" />
 
@@ -1180,7 +1263,7 @@ function CitizenDashboard() {
                       '/my-complaints'
                     )
                   }
-                  className="justify-start"
+                  className="h-11 justify-start border-slate-200 font-medium hover:border-slate-300 hover:bg-slate-50"
                 >
                   <FolderOpen data-icon="inline-start" />
 
@@ -1200,7 +1283,7 @@ function CitizenDashboard() {
                       '/track-complaint'
                     )
                   }
-                  className="justify-start"
+                  className="h-11 justify-start border-slate-200 font-medium hover:border-slate-300 hover:bg-slate-50"
                 >
                   <Search data-icon="inline-start" />
 
@@ -1213,50 +1296,7 @@ function CitizenDashboard() {
                 </Button>
 
               </CardContent>
-            </Card>
 
-
-            {/* Notification summary */}
-            <Card className="border-[#d8e5f0] bg-[#eef5fa] shadow-sm">
-
-              <CardContent className="flex gap-3 p-5">
-
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#2e638f]">
-                  <Bell aria-hidden="true" />
-                </div>
-
-
-                <div>
-                  <p className="text-sm font-semibold text-[#123b63]">
-                    Notifications
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-[#52708d]">
-                    {unreadCount > 0
-                      ? `You have ${unreadCount} unread notification${
-                          unreadCount ===
-                          1
-                            ? ''
-                            : 's'
-                        }.`
-                      : 'You have no unread notifications.'}
-                  </p>
-
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowNotifications(
-                        true
-                      )
-                    }
-                    className="mt-3 text-xs font-semibold text-[#2e638f] underline underline-offset-4"
-                  >
-                    View notifications
-                  </button>
-                </div>
-
-              </CardContent>
             </Card>
 
           </aside>
@@ -1265,7 +1305,7 @@ function CitizenDashboard() {
 
 
         {/* FOOTER */}
-        <footer className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <footer className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
           <p>
             © {new Date().getFullYear()} Citizen
@@ -1277,7 +1317,7 @@ function CitizenDashboard() {
 
             <button
               type="button"
-              className="hover:text-foreground"
+              className="transition hover:text-slate-800"
             >
               Privacy policy
             </button>
@@ -1285,7 +1325,7 @@ function CitizenDashboard() {
 
             <button
               type="button"
-              className="hover:text-foreground"
+              className="transition hover:text-slate-800"
             >
               Help centre
             </button>
@@ -1294,10 +1334,9 @@ function CitizenDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1 hover:text-foreground"
+              className="flex items-center gap-1 transition hover:text-slate-800"
             >
-              <LogOut />
-
+              <LogOut size={14} />
               Log out
             </button>
 
