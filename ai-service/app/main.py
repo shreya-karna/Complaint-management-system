@@ -1,11 +1,13 @@
 from typing import Optional
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.categorizer import categorize
 from app.duplicate import find_duplicate
 from app.priority import score_priority
 from app.summarizer import summarize
+import base64
+from fastapi import FastAPI, HTTPException      
+from app.image_categorizer import categorize_image
 from app.moderation import moderate_text
 
 app = FastAPI(title="Complaint AI Service")
@@ -27,6 +29,12 @@ class Cat(BaseModel):
 
 class CategorizeIn(BaseModel):
     text: str
+    categories: list[Cat]
+
+class CategorizeImageIn(BaseModel):
+    image_base64: str
+    mime_type: str = "image/jpeg"
+    text: str = ""
     categories: list[Cat]
 
 class Candidate(BaseModel):
@@ -54,6 +62,15 @@ def health():
 @app.post("/categorize")
 def cat(body: CategorizeIn):
     return categorize(body.text, [c.model_dump() for c in body.categories])
+
+@app.post("/categorize-image")
+def cat_image(body: CategorizeImageIn):
+    try:
+        image_bytes = base64.b64decode(body.image_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid base64 image")
+    return categorize_image(image_bytes, body.mime_type,
+                            [c.model_dump() for c in body.categories], body.text)
 
 @app.post("/analyze")
 def analyze(body: AnalyzeIn):

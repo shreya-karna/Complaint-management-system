@@ -1,12 +1,12 @@
 const AI_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000'
 
-async function post(path, body) {
+async function post(path, body, timeoutMs = 20000) {
     try {
         const res = await fetch(`${AI_URL}${path}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(20000),   // first call is slow while models warm up
+            signal: AbortSignal.timeout(timeoutMs),  // first call is slow while models warm up
         })
         if (!res.ok) throw new Error(`AI service responded ${res.status}`)
         return await res.json()
@@ -18,3 +18,4 @@ async function post(path, body) {
 
 export const aiCategorize = (text, categories) => post('/categorize', { text, categories })
 export const aiAnalyze = (payload) => post('/analyze', payload)
+export const aiCategorizeImage = (payload) => post('/categorize-image', payload, 45000)
