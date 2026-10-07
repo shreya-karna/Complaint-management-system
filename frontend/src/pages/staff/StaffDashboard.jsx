@@ -12,6 +12,7 @@ import {
 
 import { getComplaints } from '../../services/complaintService'
 import { getNotifications } from '../../services/notificationService'
+import { getStaffFeedback } from '../../services/feedbackService'
 import ComplaintsMap from '../../components/ComplaintsMap'
 
 
@@ -88,8 +89,11 @@ function StatCard({
       className="group w-full text-left"
     >
       <div className="h-full rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-slate-300 group-hover:shadow-md">
+
         <div className="flex items-start justify-between p-5">
+
           <div className="flex min-w-0 flex-col gap-3">
+
             <p className="text-sm font-medium text-slate-500">
               {label}
             </p>
@@ -101,6 +105,7 @@ function StatCard({
             <p className="text-xs text-slate-500">
               {detail}
             </p>
+
           </div>
 
           <div
@@ -111,7 +116,9 @@ function StatCard({
               aria-hidden="true"
             />
           </div>
+
         </div>
+
       </div>
     </button>
   )
@@ -121,10 +128,21 @@ function StatCard({
 function StaffDashboard() {
   const navigate = useNavigate()
 
-  const [complaints, setComplaints] = useState([])
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [complaints, setComplaints] =
+    useState([])
+
+  const [notifications, setNotifications] =
+    useState([])
+
+  const [feedback, setFeedback] =
+    useState([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState('')
+
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -151,6 +169,7 @@ function StaffDashboard() {
             ? notificationsData
             : notificationsData?.notifications || []
         )
+
       } catch (err) {
         console.error(
           'Failed to load staff dashboard:',
@@ -167,6 +186,36 @@ function StaffDashboard() {
     }
 
     loadDashboard()
+  }, [])
+
+
+  /*
+   * Load staff feedback separately.
+   *
+   * This prevents a feedback API problem
+   * from breaking the entire dashboard.
+   */
+  useEffect(() => {
+    const loadFeedback = async () => {
+      try {
+        const response =
+          await getStaffFeedback()
+
+        setFeedback(
+          response?.feedback || []
+        )
+      } catch (err) {
+        console.error(
+          'Failed to load staff feedback:',
+          err
+        )
+
+        // Keep feedback empty if the request fails.
+        setFeedback([])
+      }
+    }
+
+    loadFeedback()
   }, [])
 
 
@@ -247,13 +296,17 @@ function StaffDashboard() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center bg-gray-50">
+
         <div className="text-center">
+
           <LoaderCircle className="mx-auto mb-3 h-10 w-10 animate-spin text-blue-600" />
 
           <p className="text-gray-600">
             Loading dashboard...
           </p>
+
         </div>
+
       </div>
     )
   }
@@ -268,6 +321,7 @@ function StaffDashboard() {
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
+
             <h1 className="text-3xl font-bold text-gray-900">
               Staff Dashboard
             </h1>
@@ -276,6 +330,7 @@ function StaffDashboard() {
               Manage and track complaints assigned to
               your department.
             </p>
+
           </div>
 
 
@@ -287,6 +342,7 @@ function StaffDashboard() {
             }
             className="relative inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
+
             <Bell className="h-5 w-5" />
 
             Notifications
@@ -296,6 +352,7 @@ function StaffDashboard() {
                 {unreadNotifications}
               </span>
             )}
+
           </button>
 
         </div>
@@ -371,6 +428,7 @@ function StaffDashboard() {
           <div className="mb-5 flex items-center justify-between">
 
             <div>
+
               <h2 className="text-xl font-semibold text-gray-900">
                 Recent Complaints
               </h2>
@@ -378,6 +436,7 @@ function StaffDashboard() {
               <p className="mt-1 text-sm text-gray-500">
                 Recently submitted complaints
               </p>
+
             </div>
 
 
@@ -388,8 +447,11 @@ function StaffDashboard() {
               }
               className="hidden items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 sm:flex"
             >
+
               View all
+
               <ArrowRight className="h-4 w-4" />
+
             </button>
 
           </div>
@@ -402,7 +464,9 @@ function StaffDashboard() {
               <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
 
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+
                   <FileText className="h-8 w-8 text-blue-600" />
+
                 </div>
 
                 <h3 className="mt-5 text-lg font-bold text-gray-900">
@@ -454,6 +518,7 @@ function StaffDashboard() {
 
 
                         <p className="mt-1 text-sm text-gray-500">
+
                           {complaint.departmentName ||
                             'N/A'}
 
@@ -462,6 +527,7 @@ function StaffDashboard() {
                           {formatDate(
                             complaint.createdAt
                           )}
+
                         </p>
 
                       </div>
@@ -502,36 +568,180 @@ function StaffDashboard() {
                 }
                 className="flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
+
                 View all complaints
+
                 <ArrowRight className="h-4 w-4" />
+
               </button>
 
             </div>
 
           </div>
 
-{/* Complaint Map */}
-<div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-  <div>
-    <h2 className="text-xl font-semibold text-gray-900">
-      Complaint Map
-    </h2>
 
-    <p className="mt-1 text-sm text-gray-500">
-      View complaints reported within your department.
-    </p>
-  </div>
+          {/* Complaint Map */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
-  <div className="mt-5">
-    <ComplaintsMap
-      complaints={complaints}
-    />
-  </div>
-</div>
+            <div>
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                Complaint Map
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                View complaints reported within your department.
+              </p>
+
+            </div>
+
+            <div className="mt-5">
+
+              <ComplaintsMap
+                complaints={complaints}
+              />
+
+            </div>
+
+          </div>
+
+
+          {/* Citizen Feedback */}
+          <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
+            <div>
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                Citizen Feedback
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Feedback submitted for complaints assigned to you.
+              </p>
+
+            </div>
+
+
+            {feedback.length === 0 ? (
+
+              <div className="mt-5 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+
+                <p className="text-sm text-gray-500">
+                  No feedback has been submitted yet.
+                </p>
+
+              </div>
+
+            ) : (
+
+              <div className="mt-5 space-y-4">
+
+                {feedback.map((item) => (
+
+                  <div
+                    key={item._id}
+                    className="rounded-lg border border-gray-200 p-5"
+                  >
+
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                      {/* Complaint information */}
+                      <div className="min-w-0">
+
+                        <p className="text-sm font-semibold text-blue-600">
+                          {item.complaintId?.complaintNumber ||
+                            'Complaint'}
+                        </p>
+
+                        <h3 className="mt-1 font-medium text-gray-900">
+                          {item.complaintId?.title ||
+                            'Complaint title unavailable'}
+                        </h3>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Department:{' '}
+                          {item.complaintId?.departmentName ||
+                            'N/A'}
+                        </p>
+
+                      </div>
+
+
+                      {/* Rating */}
+                      <div className="shrink-0">
+
+                        <div className="flex items-center gap-1">
+
+                          {[1, 2, 3, 4, 5].map(
+                            (star) => (
+
+                              <span
+                                key={star}
+                                className={
+                                  star <= item.rating
+                                    ? 'text-yellow-400'
+                                    : 'text-gray-300'
+                                }
+                              >
+                                ★
+                              </span>
+
+                            )
+                          )}
+
+                        </div>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          {item.rating}/5
+                        </p>
+
+                      </div>
+
+                    </div>
+
+
+                    {/* Citizen comment */}
+                    {item.comment && (
+
+                      <div className="mt-4 rounded-lg bg-gray-50 p-4">
+
+                        <p className="text-xs font-medium uppercase text-gray-400">
+                          Citizen Comment
+                        </p>
+
+                        <p className="mt-1 text-sm leading-6 text-gray-700">
+                          {item.comment}
+                        </p>
+
+                      </div>
+
+                    )}
+
+
+                    {/* Citizen */}
+                    <div className="mt-4 text-xs text-gray-500">
+
+                      Submitted by:{' '}
+
+                      <span className="font-medium text-gray-700">
+                        {item.citizenId?.name ||
+                          item.citizenId?.email ||
+                          'Citizen'}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            )}
+
+          </div>
 
         </section>
-
-
 
       </main>
 

@@ -13,6 +13,11 @@ import {
   reopenComplaint,
 } from '../../services/complaintService'
 
+import {
+  getComplaintFeedback,
+  createFeedback,
+} from '../../services/feedbackService'
+
 const SERVER_URL =
   import.meta.env.VITE_API_URL?.replace(
     '/api',
@@ -52,6 +57,21 @@ function ComplaintDetails() {
   const [isReopening, setIsReopening] =
     useState(false)
 
+  const [feedback, setFeedback] =
+  useState(null)
+
+const [rating, setRating] =
+  useState(0)
+
+const [feedbackComment, setFeedbackComment] =
+  useState('')
+
+const [isSubmittingFeedback, setIsSubmittingFeedback] =
+  useState(false)
+
+const [feedbackMessage, setFeedbackMessage] =
+  useState('')
+
   useEffect(() => {
     const fetchComplaint = async () => {
       try {
@@ -62,6 +82,25 @@ function ComplaintDetails() {
           await getComplaintById(id)
 
         setComplaint(response.complaint)
+
+        try {
+  const feedbackResponse =
+    await getComplaintFeedback(id)
+
+  setFeedback(feedbackResponse.feedback)
+
+  if (feedbackResponse.feedback) {
+    setRating(feedbackResponse.feedback.rating)
+    setFeedbackComment(
+      feedbackResponse.feedback.comment || ''
+    )
+  }
+} catch (feedbackError) {
+  console.error(
+    'Failed to fetch feedback:',
+    feedbackError
+  )
+}
       } catch (error) {
         console.error(
           'Failed to fetch complaint:',
@@ -113,6 +152,46 @@ function ComplaintDetails() {
       setIsReopening(false)
     }
   }
+
+  const handleSubmitFeedback = async () => {
+  if (rating < 1 || rating > 5) {
+    setFeedbackMessage(
+      'Please select a rating from 1 to 5.'
+    )
+    return
+  }
+
+  try {
+    setIsSubmittingFeedback(true)
+    setFeedbackMessage('')
+
+    const response = await createFeedback(
+      id,
+      {
+        rating,
+        comment: feedbackComment,
+      }
+    )
+
+    setFeedback(response.feedback)
+
+    setFeedbackMessage(
+      'Thank you! Your feedback has been submitted.'
+    )
+  } catch (error) {
+    console.error(
+      'Failed to submit feedback:',
+      error
+    )
+
+    setFeedbackMessage(
+      error.response?.data?.message ||
+        'Failed to submit feedback.'
+    )
+  } finally {
+    setIsSubmittingFeedback(false)
+  }
+}
 
   if (isLoading) {
     return (
@@ -350,6 +429,117 @@ function ComplaintDetails() {
             )}
 
           </div>
+
+          {/* Citizen Feedback */}
+{['RESOLVED', 'CLOSED'].includes(
+  complaint.status
+) && (
+  <div className="rounded-xl border bg-white p-6 shadow-sm">
+
+    <h2 className="text-lg font-semibold">
+      Complaint Feedback
+    </h2>
+
+    {feedback ? (
+      <div className="mt-5">
+
+        <p className="text-sm text-gray-500">
+          You have already submitted your feedback.
+        </p>
+
+        <div className="mt-4 flex gap-1">
+          {[1, 2, 3, 4, 5].map(
+            (star) => (
+              <span
+                key={star}
+                className={
+                  star <= feedback.rating
+                    ? 'text-yellow-400 text-2xl'
+                    : 'text-gray-300 text-2xl'
+                }
+              >
+                ★
+              </span>
+            )
+          )}
+        </div>
+
+        {feedback.comment && (
+          <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
+            {feedback.comment}
+          </p>
+        )}
+
+      </div>
+    ) : (
+      <div className="mt-5">
+
+        <p className="text-sm text-gray-500">
+          How satisfied are you with the resolution
+          of this complaint?
+        </p>
+
+        {/* Star Rating */}
+        <div className="mt-4 flex gap-2">
+          {[1, 2, 3, 4, 5].map(
+            (star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() =>
+                  setRating(star)
+                }
+                className={`text-3xl transition ${
+                  star <= rating
+                    ? 'text-yellow-400'
+                    : 'text-gray-300'
+                } hover:text-yellow-400`}
+              >
+                ★
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Comment */}
+        <textarea
+          value={feedbackComment}
+          onChange={(event) =>
+            setFeedbackComment(
+              event.target.value
+            )
+          }
+          placeholder="Tell us about your experience..."
+          rows={4}
+          maxLength={1000}
+          className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+        />
+
+        <p className="mt-1 text-right text-xs text-gray-400">
+          {feedbackComment.length}/1000
+        </p>
+
+        {feedbackMessage && (
+          <p className="mt-3 text-sm text-gray-600">
+            {feedbackMessage}
+          </p>
+        )}
+
+        <button
+          onClick={handleSubmitFeedback}
+          disabled={isSubmittingFeedback}
+          className="mt-3 w-full rounded-lg bg-black px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSubmittingFeedback
+            ? 'Submitting...'
+            : 'Submit Feedback'}
+        </button>
+
+      </div>
+    )}
+
+  </div>
+)}
 
           {/* RIGHT SIDE */}
           <div>

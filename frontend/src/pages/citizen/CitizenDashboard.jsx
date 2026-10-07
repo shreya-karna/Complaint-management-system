@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   TrendingUp,
   X,
+  Star,
 } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -345,6 +346,20 @@ function CitizenDashboard() {
         {
           state: {
             complaint,
+          },
+        }
+      )
+    }
+
+
+  const handleFeedbackClick =
+    (complaint) => {
+      navigate(
+        `/complaints/${complaint._id}`,
+        {
+          state: {
+            complaint,
+            openFeedback: true,
           },
         }
       )
@@ -985,7 +1000,7 @@ function CitizenDashboard() {
 
                 <div className="overflow-x-auto">
 
-                  <table className="w-full min-w-[850px] text-left text-sm">
+                  <table className="w-full min-w-[1000px] text-left text-sm">
 
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
 
@@ -998,6 +1013,7 @@ function CitizenDashboard() {
                           'Status',
                           'Priority',
                           'Submitted date',
+                          'Action',
                           '',
                         ].map(
                           (heading) => (
@@ -1101,6 +1117,7 @@ function CitizenDashboard() {
                             </td>
 
 
+                            {/* View button */}
                             <td className="px-5 py-4">
 
                               <Button
@@ -1115,6 +1132,37 @@ function CitizenDashboard() {
                               >
                                 View
                               </Button>
+
+                            </td>
+
+
+                            {/* Feedback button */}
+                            <td className="px-5 py-4">
+
+                              {[
+                                'RESOLVED',
+                                'CLOSED',
+                              ].includes(
+                                complaint.status
+                              ) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleFeedbackClick(
+                                      complaint
+                                    )
+                                  }
+                                  className="border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                                >
+                                  <Star
+                                    size={15}
+                                    className="mr-1.5"
+                                  />
+
+                                  Feedback
+                                </Button>
+                              )}
 
                             </td>
 
@@ -1250,52 +1298,6 @@ function CitizenDashboard() {
               </CardContent>
 
             </Card>
-
-
-            {/* Notification summary */}
-            {/* <Card className="border-[#d8e5f0] bg-[#eef5fa] shadow-sm">
-
-              <CardContent className="flex gap-3 p-5">
-
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#2e638f] shadow-sm">
-                  <Bell size={19} />
-                </div>
-
-
-                <div className="min-w-0">
-
-                  <p className="text-sm font-bold text-[#123b63]">
-                    Notifications
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-[#52708d]">
-                    {unreadCount > 0
-                      ? `You have ${unreadCount} unread notification${
-                          unreadCount === 1
-                            ? ''
-                            : 's'
-                        }.`
-                      : 'You have no unread notifications.'}
-                  </p>
-
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowNotifications(
-                        true
-                      )
-                    }
-                    className="mt-3 text-xs font-bold text-[#2e638f] underline underline-offset-4 hover:text-[#123b63]"
-                  >
-                    View notifications
-                  </button>
-
-                </div>
-
-              </CardContent>
-
-            </Card> */}
 
           </aside>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import {
   FileText,
   Clock,
@@ -17,23 +18,37 @@ import {
 } from 'lucide-react'
 
 import { getComplaints } from '../../services/complaintService'
-import ComplaintsMap from "../../components/ComplaintsMap";
+import { getAllFeedback } from '../../services/feedbackService'
+
+import ComplaintsMap from '../../components/ComplaintsMap'
 
 function AdminDashboard() {
   const navigate = useNavigate()
 
-  const [complaints, setComplaints] = useState([])
-  const [statistics, setStatistics] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [complaints, setComplaints] =
+    useState([])
+
+  const [statistics, setStatistics] =
+    useState(null)
+
+  const [feedback, setFeedback] =
+    useState([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState('')
 
   useEffect(() => {
-    const fetchComplaints = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true)
         setError('')
 
-        const response = await getComplaints()
+        // Fetch complaints
+        const response =
+          await getComplaints()
 
         setComplaints(
           response.complaints || []
@@ -42,18 +57,30 @@ function AdminDashboard() {
         setStatistics(
           response.statistics || null
         )
+
+        // Fetch citizen feedback
+        const feedbackResponse =
+          await getAllFeedback()
+
+        setFeedback(
+          feedbackResponse.feedback || []
+        )
       } catch (error) {
-        console.error(error)
+        console.error(
+          'Failed to load dashboard data:',
+          error
+        )
 
         setError(
-          'Failed to load dashboard data.'
+          error.response?.data?.message ||
+            'Failed to load dashboard data.'
         )
       } finally {
         setLoading(false)
       }
     }
 
-    fetchComplaints()
+    fetchDashboardData()
   }, [])
 
   const totalComplaints =
@@ -91,6 +118,7 @@ function AdminDashboard() {
       navigate(
         `/admin/complaints?status=${status}`
       )
+
       return
     }
 
@@ -99,24 +127,30 @@ function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50">
+      <div className="flex min-h-[60vh] items-center justify-center bg-gray-50">
+
         <div className="text-center">
-          <LoaderCircle className="w-10 h-10 mx-auto mb-3 animate-spin text-blue-600" />
+
+          <LoaderCircle className="mx-auto mb-3 h-10 w-10 animate-spin text-blue-600" />
 
           <p className="text-gray-600">
             Loading dashboard...
           </p>
+
         </div>
+
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       <main className="mx-auto max-w-7xl px-6 py-8">
 
         {/* Header */}
         <div className="mb-8">
+
           <h1 className="text-3xl font-bold text-gray-900">
             Admin Dashboard
           </h1>
@@ -124,7 +158,9 @@ function AdminDashboard() {
           <p className="mt-2 text-gray-500">
             Complaint Management System
           </p>
+
         </div>
+
 
         {/* Error */}
         {error && (
@@ -132,6 +168,7 @@ function AdminDashboard() {
             {error}
           </div>
         )}
+
 
         {/* Statistics */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -145,7 +182,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Total Complaints
                 </p>
@@ -153,18 +192,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {totalComplaints}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-blue-100 p-3">
+
                 <FileText className="h-6 w-6 text-blue-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600">
+
               View all complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Submitted */}
           <button
@@ -175,7 +223,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Submitted
                 </p>
@@ -183,29 +233,42 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {submittedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-blue-100 p-3">
+
                 <FileText className="h-6 w-6 text-blue-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-blue-600">
+
               View submitted complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Under Review */}
           <button
             type="button"
             onClick={() =>
-              goToComplaints('UNDER_REVIEW')
+              goToComplaints(
+                'UNDER_REVIEW'
+              )
             }
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-yellow-300 hover:bg-yellow-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Under Review
                 </p>
@@ -213,18 +276,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {underReviewCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-yellow-100 p-3">
+
                 <Clock className="h-6 w-6 text-yellow-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-yellow-600">
+
               View complaints under review
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Assigned */}
           <button
@@ -235,7 +307,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-purple-300 hover:bg-purple-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Assigned
                 </p>
@@ -243,29 +317,42 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {assignedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-purple-100 p-3">
+
                 <UserCheck className="h-6 w-6 text-purple-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-purple-600">
+
               View assigned complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* In Progress */}
           <button
             type="button"
             onClick={() =>
-              goToComplaints('IN_PROGRESS')
+              goToComplaints(
+                'IN_PROGRESS'
+              )
             }
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   In Progress
                 </p>
@@ -273,18 +360,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {inProgressCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-orange-100 p-3">
+
                 <LoaderCircle className="h-6 w-6 text-orange-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-orange-600">
+
               View in-progress complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Resolved */}
           <button
@@ -295,7 +391,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-green-300 hover:bg-green-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Resolved
                 </p>
@@ -303,18 +401,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {resolvedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-green-100 p-3">
+
                 <CheckCircle className="h-6 w-6 text-green-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-green-600">
+
               View resolved complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Closed */}
           <button
@@ -325,7 +432,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-gray-400 hover:bg-gray-50 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Closed
                 </p>
@@ -333,18 +442,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {closedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-gray-100 p-3">
+
                 <Lock className="h-6 w-6 text-gray-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-gray-600">
+
               View closed complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Rejected */}
           <button
@@ -355,7 +473,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-red-300 hover:bg-red-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Rejected
                 </p>
@@ -363,18 +483,27 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {rejectedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-red-100 p-3">
+
                 <XCircle className="h-6 w-6 text-red-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-red-600">
+
               View rejected complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Reopened */}
           <button
@@ -385,7 +514,9 @@ function AdminDashboard() {
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:bg-pink-50/30 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Reopened
                 </p>
@@ -393,29 +524,42 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {reopenedCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-pink-100 p-3">
+
                 <RotateCcw className="h-6 w-6 text-pink-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-pink-600">
+
               View reopened complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
+
 
           {/* Duplicate */}
           <button
             type="button"
             onClick={() =>
-              navigate('/admin/complaints/duplicates')
+              navigate(
+                '/admin/complaints/duplicates'
+              )
             }
             className="w-full rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-gray-400 hover:bg-gray-50 hover:shadow-md"
           >
             <div className="flex items-start justify-between">
+
               <div>
+
                 <p className="text-sm font-medium text-gray-500">
                   Duplicate
                 </p>
@@ -423,24 +567,35 @@ function AdminDashboard() {
                 <p className="mt-2 text-3xl font-bold text-gray-900">
                   {duplicateCount}
                 </p>
+
               </div>
 
               <div className="rounded-lg bg-gray-100 p-3">
+
                 <Copy className="h-6 w-6 text-gray-600" />
+
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-1 text-sm font-medium text-gray-600">
+
               Manage duplicate complaints
+
               <ArrowRight className="h-4 w-4" />
+
             </div>
+
           </button>
 
         </div>
 
+
         {/* Quick Actions */}
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
           <div>
+
             <h2 className="text-xl font-semibold text-gray-900">
               Quick Actions
             </h2>
@@ -448,7 +603,9 @@ function AdminDashboard() {
             <p className="mt-1 text-sm text-gray-500">
               Quickly access common administration tasks.
             </p>
+
           </div>
+
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -456,15 +613,21 @@ function AdminDashboard() {
             <button
               type="button"
               onClick={() =>
-                navigate('/admin/complaints')
+                navigate(
+                  '/admin/complaints'
+                )
               }
               className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
             >
+
               <div className="rounded-lg bg-blue-100 p-2">
+
                 <FileText className="h-5 w-5 text-blue-600" />
+
               </div>
 
               <div>
+
                 <p className="font-medium text-gray-900">
                   View Complaints
                 </p>
@@ -472,8 +635,11 @@ function AdminDashboard() {
                 <p className="text-xs text-gray-500">
                   Manage complaints
                 </p>
+
               </div>
+
             </button>
+
 
             {/* Users */}
             <button
@@ -483,11 +649,15 @@ function AdminDashboard() {
               }
               className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-purple-300 hover:bg-purple-50"
             >
+
               <div className="rounded-lg bg-purple-100 p-2">
+
                 <Users className="h-5 w-5 text-purple-600" />
+
               </div>
 
               <div>
+
                 <p className="font-medium text-gray-900">
                   Manage Users
                 </p>
@@ -495,22 +665,31 @@ function AdminDashboard() {
                 <p className="text-xs text-gray-500">
                   Manage system users
                 </p>
+
               </div>
+
             </button>
+
 
             {/* Departments */}
             <button
               type="button"
               onClick={() =>
-                navigate('/admin/departments')
+                navigate(
+                  '/admin/departments'
+                )
               }
               className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-green-300 hover:bg-green-50"
             >
+
               <div className="rounded-lg bg-green-100 p-2">
+
                 <Building2 className="h-5 w-5 text-green-600" />
+
               </div>
 
               <div>
+
                 <p className="font-medium text-gray-900">
                   Manage Departments
                 </p>
@@ -518,22 +697,31 @@ function AdminDashboard() {
                 <p className="text-xs text-gray-500">
                   Manage departments
                 </p>
+
               </div>
+
             </button>
+
 
             {/* Categories */}
             <button
               type="button"
               onClick={() =>
-                navigate('/admin/categories')
+                navigate(
+                  '/admin/categories'
+                )
               }
               className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-orange-300 hover:bg-orange-50"
             >
+
               <div className="rounded-lg bg-orange-100 p-2">
+
                 <Tags className="h-5 w-5 text-orange-600" />
+
               </div>
 
               <div>
+
                 <p className="font-medium text-gray-900">
                   Manage Categories
                 </p>
@@ -541,15 +729,21 @@ function AdminDashboard() {
                 <p className="text-xs text-gray-500">
                   Manage complaint categories
                 </p>
+
               </div>
+
             </button>
 
           </div>
-                </div>
+
+        </div>
+
 
         {/* Complaint Map */}
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
           <div>
+
             <h2 className="text-xl font-semibold text-gray-900">
               Complaint Map
             </h2>
@@ -557,17 +751,157 @@ function AdminDashboard() {
             <p className="mt-1 text-sm text-gray-500">
               View all complaints based on their reported locations.
             </p>
+
           </div>
 
           <div className="mt-5">
- 
+
             <ComplaintsMap
               complaints={complaints}
             />
+
           </div>
+
+        </div>
+
+
+        {/* Citizen Feedback */}
+        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
+          <div>
+
+            <h2 className="text-xl font-semibold text-gray-900">
+              Citizen Feedback
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              View feedback submitted by citizens for resolved complaints.
+            </p>
+
+          </div>
+
+
+          {feedback.length === 0 ? (
+
+            <div className="mt-5 rounded-lg border border-dashed border-gray-300 p-8 text-center">
+
+              <p className="text-sm text-gray-500">
+                No feedback has been submitted yet.
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="mt-5 space-y-4">
+
+              {feedback.map((item) => (
+
+                <div
+                  key={item._id}
+                  className="rounded-lg border border-gray-200 p-5"
+                >
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                    {/* Complaint information */}
+                    <div className="min-w-0">
+
+                      <p className="text-sm font-semibold text-blue-600">
+                        {item.complaintId?.complaintNumber ||
+                          'Complaint'}
+                      </p>
+
+                      <h3 className="mt-1 font-medium text-gray-900">
+                        {item.complaintId?.title ||
+                          'Complaint title unavailable'}
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Department:{' '}
+                        {item.complaintId?.departmentName ||
+                          'N/A'}
+                      </p>
+
+                    </div>
+
+
+                    {/* Rating */}
+                    <div className="shrink-0">
+
+                      <div className="flex items-center gap-1">
+
+                        {[1, 2, 3, 4, 5].map(
+                          (star) => (
+
+                            <span
+                              key={star}
+                              className={
+                                star <= item.rating
+                                  ? 'text-yellow-400'
+                                  : 'text-gray-300'
+                              }
+                            >
+                              ★
+                            </span>
+
+                          )
+                        )}
+
+                      </div>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {item.rating}/5
+                      </p>
+
+                    </div>
+
+                  </div>
+
+
+                  {/* Citizen comment */}
+                  {item.comment && (
+
+                    <div className="mt-4 rounded-lg bg-gray-50 p-4">
+
+                      <p className="text-xs font-medium uppercase text-gray-400">
+                        Citizen Comment
+                      </p>
+
+                      <p className="mt-1 text-sm leading-6 text-gray-700">
+                        {item.comment}
+                      </p>
+
+                    </div>
+
+                  )}
+
+
+                  {/* Citizen */}
+                  <div className="mt-4 text-xs text-gray-500">
+
+                    Submitted by:{' '}
+
+                    <span className="font-medium text-gray-700">
+                      {item.citizenId?.name ||
+                        item.citizenId?.email ||
+                        'Citizen'}
+                    </span>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          )}
+
         </div>
 
       </main>
+
     </div>
   )
 }
