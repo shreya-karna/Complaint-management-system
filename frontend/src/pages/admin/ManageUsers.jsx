@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import provinces from "../../data/provinces.json";
 import districts from "../../data/districts.json";
 import localLevels from "../../data/localLevels.json";
@@ -9,6 +10,7 @@ import { createUser, getUsers, updateUser } from "../../services/userService";
 import { getDepartments } from "../../services/departmentService";
 
 function ManageUsers() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
 
@@ -378,6 +380,15 @@ function ManageUsers() {
       <div className="mx-auto max-w-7xl">
         {/* Page Header */}
         <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => navigate("/admin")}
+            className="mb-5 inline-flex items-center gap-2 rounded-md border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            <ArrowLeft size={16} />
+            Back to Admin Dashboard
+          </button>
+
           <h1 className="text-3xl font-bold text-foreground">Manage Users</h1>
 
           <p className="mt-2 text-muted-foreground">
@@ -810,7 +821,9 @@ function ManageUsers() {
                       <td className="px-6 py-4">
                         <span
                           className={
-                            user.isActive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                            user.isActive
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
                           }
                         >
                           {user.isActive ? "Active" : "Inactive"}
