@@ -117,7 +117,7 @@ function AdminComplaints() {
         <div className="mb-8">
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/admin")}
             className="mb-5 rounded-md border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
           >
             ← Back

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import {
   createCategory,
@@ -9,6 +11,7 @@ import {
 import { getDepartments } from "../../services/departmentService";
 
 function ManageCategories() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [departments, setDepartments] = useState([]);
 
@@ -156,6 +159,14 @@ function ManageCategories() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-6xl px-6 py-10">
+        <button
+          type="button"
+          onClick={() => navigate("/admin")}
+          className="mb-5 inline-flex items-center gap-2 rounded-md border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          <ArrowLeft size={16} />
+          Back to Admin Dashboard
+        </button>
         <h1 className="text-3xl font-bold text-foreground">
           Manage Categories
         </h1>
